@@ -157,3 +157,18 @@
         @apply bg-background text-foreground;
     }
 }
+@keyframes pulse-border {
+    0%,
+    100% {
+        border-color: #f31212; /* rojo */
+    }
+    50% {
+        border-color: #2b1616; /* rojo claro */
+    }
+}
+
+.animated-border-red {
+    animation: pulse-border 1.2s infinite;
+    border-left-width: 4px;
+    border-style: solid;
+}
