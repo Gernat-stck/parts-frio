@@ -59,8 +59,7 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Role::class, 'role_user', 'user_id', 'role_slug')
             ->using(RoleUser::class)
-            ->withPivot('role_slug')
-            ->wherePivot('user_id', $this->user_id); // Asegurar que siempre se filtre por el user_id correcto
+            ->withPivot('role_slug');
     }
 
     /**

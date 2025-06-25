@@ -21,8 +21,7 @@ interface InventoryDashboardProps {
 }
 
 export default function InventoryDashboard({ auth }: InventoryDashboardProps) {
-    const isAdmin = true;
-    console.log('isAdmin', isAdmin, auth);
+    const isAdmin = auth.user?.role === 'admin' || auth.user?.role === 'super-admin';
     // Initial inventory data
     const initialInventoryData: Product[] = [
         {

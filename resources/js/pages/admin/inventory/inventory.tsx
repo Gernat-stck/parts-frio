@@ -12,7 +12,6 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function Inventory({ auth }: { auth: Auth }) {
-    console.log(auth);
     return (
         <AppLayout breadcrumbs={breadcrumbs} mainNavItems={adminNavItems}>
             <Head title="Inventario" />
