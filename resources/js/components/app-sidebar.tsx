@@ -4,21 +4,13 @@ import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid } from 'lucide-react';
+import { BookOpen, Folder } from 'lucide-react';
 import AppLogo from './app-logo';
 
-const mainNavItems: NavItem[] = [
-    {
-        title: 'Dashboard',
-        href: '/dashboard',
-        icon: LayoutGrid,
-    },
-    {
-        title: 'Inventory',
-        href: '/admin/inventory',
-        icon: LayoutGrid,
-    },
-];
+interface AppSidebarProps {
+    mainNavItems?: NavItem[];
+    variant?: 'inset' | 'floating' | 'sidebar';
+}
 
 const footerNavItems: NavItem[] = [
     {
@@ -33,9 +25,9 @@ const footerNavItems: NavItem[] = [
     },
 ];
 
-export function AppSidebar() {
+export function AppSidebar({ mainNavItems = [], variant = 'inset' }: AppSidebarProps) {
     return (
-        <Sidebar collapsible="icon" variant="inset">
+        <Sidebar collapsible="icon" variant={variant}>
             <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
