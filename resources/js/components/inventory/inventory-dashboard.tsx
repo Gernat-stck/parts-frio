@@ -268,7 +268,6 @@ export default function InventoryDashboard({ auth }: InventoryDashboardProps) {
                                     {paginatedData.map((item) => {
                                         const stockStatus = getStockStatus(item.stock, item.minStock);
                                         const StatusIcon = stockStatus.icon;
-                                        console.log('stockStatus', stockStatus);
                                         return (
                                             <TableRow key={item.id}>
                                                 <TableCell
