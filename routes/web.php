@@ -15,11 +15,13 @@ Route::middleware(['auth', 'verified', 'roles:' . implode(',', config('roles.ava
         Route::get('/dashboard', function () {
             $user = Auth::user();
             $redirectService = app(RoleRedirectService::class);
-            
-            return redirect()->route($redirectService->getRedirectRouteForUser($user));
+            $redirectRoute = $redirectService->getRedirectRouteForUser($user);
+            return redirect()->route($redirectRoute);
         })->name('dashboard');
     }
 );
 
 require __DIR__ . '/settings.php';
 require __DIR__ . '/auth.php';
+require __DIR__ . '/admin.php';
+require __DIR__ . '/employee.php';
