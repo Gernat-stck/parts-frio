@@ -2,19 +2,19 @@ import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
-import { adminNavItems } from '@/lib/nav-items';
+import { employeeNavItems } from '@/lib/nav-items';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
-        title: 'Crear venta',
-        href: '/admin/market-car',
+        title: 'Facturación',
+        href: '/employee/billing',
     },
 ];
 
-export default function CreateSale() {
+export default function Billing() {
     return (
-        <AppLayout breadcrumbs={breadcrumbs} mainNavItems={adminNavItems}>
-            <Head title="Crear venta" />
+        <AppLayout breadcrumbs={breadcrumbs} mainNavItems={employeeNavItems}>
+            <Head title="Facturación" />
             <PlaceholderPattern />
         </AppLayout>
     );

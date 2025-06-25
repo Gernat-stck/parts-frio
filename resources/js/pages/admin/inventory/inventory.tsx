@@ -16,7 +16,7 @@ export default function Inventory({ auth }: { auth: Auth }) {
     return (
         <AppLayout breadcrumbs={breadcrumbs} mainNavItems={adminNavItems}>
             <Head title="Inventario" />
-            <main className="container mx-auto h-[calc(100vh-12rem)] p-4">
+            <main className="container mx-auto h-[calc(100vh-5rem)] p-5">
                 <InventoryDashboard auth={auth} />
             </main>
         </AppLayout>
