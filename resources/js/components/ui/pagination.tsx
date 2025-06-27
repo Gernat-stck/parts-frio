@@ -1,12 +1,17 @@
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 
 interface PaginationProps {
   /**
-   * Número total de páginas
+   * Array de datos a paginar
    */
-  totalPages: number;
+  data: any[];
+  
+  /**
+   * Número de elementos por página
+   */
+  itemsPerPage: number;
   
   /**
    * Página actual
@@ -19,12 +24,14 @@ interface PaginationProps {
   onPageChange: (page: number) => void;
   
   /**
+   * Función que devuelve los datos paginados
+   */
+  onPaginatedData: (paginatedData: any[]) => void;
+  
+  /**
    * Información sobre los elementos mostrados
    */
   pageInfo?: {
-    startIndex: number;
-    endIndex: number;
-    total: number;
     itemName?: string;
   };
   
@@ -36,16 +43,41 @@ interface PaginationProps {
 }
 
 export function Pagination({
-  totalPages,
+  data,
+  itemsPerPage,
   currentPage,
   onPageChange,
+  onPaginatedData,
   pageInfo,
   maxPageButtons = 5,
 }: PaginationProps) {
+  
+  // Calcular paginación
+  const paginationData = useMemo(() => {
+    const totalPages = Math.ceil(data.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const paginatedData = data.slice(startIndex, startIndex + itemsPerPage);
+    
+    return {
+      totalPages,
+      startIndex,
+      paginatedData,
+      endIndex: Math.min(startIndex + itemsPerPage, data.length),
+      total: data.length
+    };
+  }, [data, itemsPerPage, currentPage]);
+
+  // Enviar datos paginados al componente padre
+  useMemo(() => {
+    onPaginatedData(paginationData.paginatedData);
+  }, [paginationData.paginatedData, onPaginatedData]);
+
   /**
    * Determina qué botones de página mostrar basado en la página actual
    */
   const getPageButtons = useCallback(() => {
+    const { totalPages } = paginationData;
+    
     if (totalPages <= maxPageButtons) {
       // Si hay menos páginas que el máximo de botones, mostrar todas
       return Array.from({ length: totalPages }, (_, i) => i + 1);
@@ -84,18 +116,16 @@ export function Pagination({
     }
     
     return pages;
-  }, [totalPages, currentPage, maxPageButtons]);
+  }, [paginationData.totalPages, currentPage, maxPageButtons]);
 
   // Si solo hay una página, no mostrar paginación
-  if (totalPages <= 1) return null;
+  if (paginationData.totalPages <= 1) return null;
 
   return (
     <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
-      {pageInfo && (
-        <div className="text-sm text-gray-600">
-          Mostrando {pageInfo.startIndex} a {pageInfo.endIndex} de {pageInfo.total} {pageInfo.itemName || 'elementos'}
-        </div>
-      )}
+      <div className="text-sm text-gray-600">
+        Mostrando {paginationData.startIndex + 1} a {paginationData.endIndex} de {paginationData.total} {pageInfo?.itemName || 'elementos'}
+      </div>
       
       <div className="flex items-center gap-2">
         <Button
@@ -134,7 +164,7 @@ export function Pagination({
         
         <div className="flex items-center gap-1 sm:hidden">
           <span className="text-sm font-medium">
-            {currentPage} / {totalPages}
+            {currentPage} / {paginationData.totalPages}
           </span>
         </div>
         
@@ -142,7 +172,7 @@ export function Pagination({
           variant="outline"
           size="sm"
           onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
+          disabled={currentPage === paginationData.totalPages}
           aria-label="Página siguiente"
         >
           <span className="mr-1">Siguiente</span>
