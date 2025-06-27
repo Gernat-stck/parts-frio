@@ -43,7 +43,7 @@ class AdminController extends Controller
     public function manageUsers()
     {
         // Logic to manage users
-        return view('admin.users.index');
+        return Inertia::render('admin/users/user-management');
     }
 
 }
