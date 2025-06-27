@@ -1,8 +1,8 @@
-import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
 import AppLayout from '@/layouts/app-layout';
-import { type BreadcrumbItem } from '@/types';
-import { Head } from '@inertiajs/react';
 import { adminNavItems } from '@/lib/nav-items';
+import { Auth, type BreadcrumbItem } from '@/types';
+import { Head } from '@inertiajs/react';
+import UserManagement from '@/components/users/user-management';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -11,11 +11,13 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-export default function Users() {
+export default function Users({auth}: {auth: Auth}) {
     return (
         <AppLayout breadcrumbs={breadcrumbs} mainNavItems={adminNavItems}>
             <Head title="Administrar usuarios" />
-            <PlaceholderPattern />
+            <main className="container mx-auto h-[calc(100vh-5rem)] p-5">
+                <UserManagement auth={auth} />
+            </main>
         </AppLayout>
     );
 }
