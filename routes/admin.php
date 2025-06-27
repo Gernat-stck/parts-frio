@@ -9,4 +9,7 @@ Route::middleware(['auth', 'verified', 'roles:admin'])->group(function () {
 
     # Display the inventory management page
     Route::get('/admin/inventory', [AdminController::class, 'manageInventory'])->name('admin.inventory');
+
+    # Display the user management page
+    Route::get('/admin/users', [AdminController::class, 'manageUsers'])->name('admin.users');
 });
