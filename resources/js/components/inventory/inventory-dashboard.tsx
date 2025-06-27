@@ -77,7 +77,7 @@ export default function InventoryDashboard({ auth }: InventoryDashboardProps) {
     return (
         <ScrollArea className="h-full w-full">
             <div className="p-2">
-                <div className="mx-auto max-w-7xl space-y-2 md:space-y-6">
+                <div className="mx-auto max-w-7xl space-y-2">
                     {/* Header */}
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                         <div>

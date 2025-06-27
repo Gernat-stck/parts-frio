@@ -1,4 +1,3 @@
-import { Edit, MoreHorizontal, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -6,6 +5,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Product } from '@/types/products';
 import { getStockStatus } from '@/utils/inventory-utils';
+import { Edit, MoreHorizontal, Trash2 } from 'lucide-react';
 import NoData from '../187443387_10810386.png';
 
 interface InventoryTableProps {
@@ -33,7 +33,6 @@ export const InventoryTable = ({ data, isAdmin, onEdit, onDelete }: InventoryTab
                     </TableHeader>
                     <TableBody>
                         {data.map((item) => {
-                            console.log('Processing item:', item);
                             const stockStatus = getStockStatus(item.stock, item.minStock);
                             const StatusIcon = stockStatus.icon;
                             return (
@@ -42,19 +41,17 @@ export const InventoryTable = ({ data, isAdmin, onEdit, onDelete }: InventoryTab
                                         className={`p-2 ${stockStatus.status === 'critico' ? 'animated-border-red' : `border-l-4 ${stockStatus.color}`}`}
                                     >
                                         <div className="relative h-12 max-h-16 w-12 md:h-16 md:w-16">
-                                            <img
-                                                src={item.image || NoData}
-                                                alt={item.name}
-                                                className="rounded-lg object-cover"
-                                            />
+                                            <img src={item.image || NoData} alt={item.name} className="rounded-lg object-cover" />
                                         </div>
                                     </TableCell>
                                     <TableCell className="p-2">
                                         <div className="space-y-1">
-                                            <div className="line-clamp-1 text-sm font-medium md:text-base">{item.name}</div>
-                                            <div className="line-clamp-2 text-xs opacity-70 md:line-clamp-1 md:text-sm">
-                                                {item.description}
+                                            <div
+                                                className={`line-clamp-1 text-sm font-medium md:text-base ${item.stock === 0 ? 'line-through opacity-50' : ''}`}
+                                            >
+                                                {item.name}
                                             </div>
+                                            <div className="line-clamp-2 text-xs opacity-70 md:line-clamp-1 md:text-sm">{item.description}</div>
                                         </div>
                                     </TableCell>
                                     <TableCell className="hidden p-2 md:table-cell">
@@ -63,8 +60,11 @@ export const InventoryTable = ({ data, isAdmin, onEdit, onDelete }: InventoryTab
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="p-2">
-                                        <div className="text-sm font-medium md:text-base">${item.price.toFixed(2)}</div>
+                                        <div className={`text-sm font-medium md:text-base ${item.stock === 0 ? 'line-through opacity-50' : ''}`}>
+                                            ${item.price.toFixed(2)}
+                                        </div>
                                     </TableCell>
+
                                     <TableCell className="p-2">
                                         <div className="space-y-1">
                                             <div className="text-sm font-medium">{item.stock}</div>
@@ -75,9 +75,7 @@ export const InventoryTable = ({ data, isAdmin, onEdit, onDelete }: InventoryTab
                                         <div className="space-y-1">
                                             <div className="flex items-center gap-1">
                                                 <StatusIcon className="h-3 w-3 flex-shrink-0 md:h-4 md:w-4" />
-                                                <span
-                                                    className={`text-xs font-medium md:text-sm ${stockStatus.textColor} max-w-30 break-words`}
-                                                >
+                                                <span className={`text-xs font-medium md:text-sm ${stockStatus.textColor} max-w-30 break-words`}>
                                                     {stockStatus.label}
                                                 </span>
                                             </div>
