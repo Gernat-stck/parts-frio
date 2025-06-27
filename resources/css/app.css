@@ -160,7 +160,7 @@
 @keyframes pulse-border {
     0%,
     100% {
-        border-color: #f31212; /* rojo */
+        border-color: #c31414; /* rojo */
     }
     50% {
         border-color: #2b1616; /* rojo claro */
