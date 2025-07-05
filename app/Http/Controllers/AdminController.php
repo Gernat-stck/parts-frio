@@ -46,4 +46,13 @@ class AdminController extends Controller
         return Inertia::render('admin/users/user-management');
     }
 
+    /**
+     *  Display the create order page
+     *  @return \Inertia\Response
+     */
+    public function createSale()
+    {
+        return Inertia::render('admin/sales/sales');
+    }
+
 }
