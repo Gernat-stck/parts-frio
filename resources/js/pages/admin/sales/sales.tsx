@@ -1,21 +1,26 @@
-import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
+import SalesDashboard from '@/components/sales/sales-dashboard';
 import AppLayout from '@/layouts/app-layout';
-import { type BreadcrumbItem } from '@/types';
-import { Head } from '@inertiajs/react';
 import { adminNavItems } from '@/lib/nav-items';
+import { Auth, type BreadcrumbItem } from '@/types';
+import { Head } from '@inertiajs/react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
-        title: 'Crear venta',
-        href: '/admin/market-car',
+        title: 'Punto de venta',
+        href: route('admin.sales'),
     },
 ];
 
-export default function CreateSale() {
+interface CreateSalesProps {
+    auth: Auth;
+}
+export default function CreateSale({ auth }: CreateSalesProps) {
     return (
         <AppLayout breadcrumbs={breadcrumbs} mainNavItems={adminNavItems}>
-            <Head title="Crear venta" />
-            <PlaceholderPattern />
+            <Head title="Punto de Venta" />
+            <main className="container mx-auto h-[calc(100vh-5rem)] p-5">
+                <SalesDashboard auth={auth} />
+            </main>
         </AppLayout>
     );
 }
