@@ -1,4 +1,4 @@
-import { LayoutGrid, ListChecks, UserRoundCog } from 'lucide-react';
+import { HandCoins, LayoutGrid, ListChecks, UserRoundCog } from 'lucide-react';
 import { NavItem } from '../types';
 
 export const adminNavItems: NavItem[] = [
@@ -8,15 +8,20 @@ export const adminNavItems: NavItem[] = [
         icon: LayoutGrid,
     },
     {
-        title: 'Inventory',
+        title: 'Inventario',
         href: route('admin.inventory'),
         icon: ListChecks,
     },
     {
-        title: 'Users',
+        title: 'Usuarios',
         href: route('admin.users'),
         icon: UserRoundCog,
     },
+    {
+        title: 'Punto de Venta',
+        href: route('admin.sales'),
+        icon: HandCoins,
+    }
 
 ];
 
