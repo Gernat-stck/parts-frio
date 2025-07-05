@@ -12,4 +12,7 @@ Route::middleware(['auth', 'verified', 'roles:admin'])->group(function () {
 
     # Display the user management page
     Route::get('/admin/users', [AdminController::class, 'manageUsers'])->name('admin.users');
+
+    # Display create order page
+    Route::get('/admin/sales', [AdminController::class, 'createSale'])->name('admin.sales');
 });
