@@ -17,7 +17,7 @@ export function ProductList({ products, cart = [], onAddToCart }: ProductListPro
                 const availableStock = product.stock - (cartItem?.quantity || 0);
 
                 return (
-                    <div key={product.id} className="flex items-center gap-3 border p-3 hover:bg-gray-50/50">
+                    <div key={product.id} className="flex items-center gap-3 border p-3 hover:transform hover:scale-97 transition-transform">
                         <div className="relative h-12 w-12 flex-shrink-0">
                             <img src={product.image || '/placeholder.svg'} alt={product.name} className="rounded object-cover" />
                         </div>
