@@ -54,5 +54,21 @@ class AdminController extends Controller
     {
         return Inertia::render('admin/sales/sales');
     }
+    /**
+     *  Display the sales history page
+     *  @return \Inertia\Response
+     */
+    public function salesHistory()
+    {
+        return Inertia::render('admin/sales/sales-history');
+    }
 
+    /**
+     *  Display the sales record page
+     *  @return \Inertia\Response
+     */
+    public function salesRecord()
+    {
+        return Inertia::render('admin/sales/sales-record');
+    }
 }
