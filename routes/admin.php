@@ -15,4 +15,8 @@ Route::middleware(['auth', 'verified', 'roles:admin'])->group(function () {
 
     # Display create order page
     Route::get('/admin/sales', [AdminController::class, 'createSale'])->name('admin.sales');
+
+    # Display the sales report page
+    Route::get('/admin/sales/history', [AdminController::class, 'salesHistory'])->name('admin.sales.history');
+    Route::get('/admin/sales/record', [AdminController::class, 'salesRecord'])->name('admin.sales.record');
 });
