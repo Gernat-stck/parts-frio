@@ -12,39 +12,8 @@ import { ProductList } from '../product/product-list';
 import { ScrollArea } from '../ui/scroll-area';
 import { CustomerForm } from './customer-form';
 import { ShoppingCartPanel } from './shopping-cart-panel';
-
-interface CartItem extends Product {
-    quantity: number;
-    subtotal: number;
-}
-
-interface Seller {
-    id: string;
-    name: string;
-    email: string;
-    commission: number;
-}
-
-interface Customer {
-    name: string;
-    email: string;
-    phone: string;
-    address: string;
-    document: string;
-    documentType: 'cedula' | 'ruc' | 'pasaporte';
-}
-
-interface Sale {
-    id: string;
-    date: string;
-    seller: Seller;
-    customer: Customer;
-    items: CartItem[];
-    subtotal: number;
-    tax: number;
-    total: number;
-    status: 'completed' | 'pending';
-}
+import { CartItem, Sale } from '../../types/invoice';
+import { Customer, Seller } from '../../types/invoice-persons';
 
 interface SalesDashboardProps {
     auth: Auth;
@@ -63,7 +32,7 @@ export default function SalesDashboard({ auth }: SalesDashboardProps) {
     const [isInvoicePreviewOpen, setIsInvoicePreviewOpen] = useState(false);
     const [, setCurrentCustomer] = useState<Customer | null>(null);
     const [currentSale, setCurrentSale] = useState<Sale | null>(null);
-    const availableProducts: Product[] = initialInventoryData || []; // Asumiendo que los productos vienen del auth
+    const availableProducts: Product[] = initialInventoryData || [];
     // Filtrar productos disponibles
     const filteredProducts = useMemo(() => {
         return availableProducts.filter((product) => {
@@ -125,6 +94,9 @@ export default function SalesDashboard({ auth }: SalesDashboardProps) {
 
     const removeFromCart = (productId: number) => {
         setCart((prev) => prev.filter((item) => item.id !== productId));
+    };
+    const removeItem = (productId: number) => {
+        setCart((prevCart) => prevCart.filter((item) => item.id !== productId));
     };
 
     const clearCart = () => {
@@ -217,7 +189,7 @@ export default function SalesDashboard({ auth }: SalesDashboardProps) {
                             </div>
 
                             {/* Lista de Productos */}
-                            <ScrollArea className="mt-4 max-h-[68vh] overflow-auto">
+                            <ScrollArea className="mt-4 h-[68vh] ">
                                 <ProductList products={filteredProducts} cart={cart} onAddToCart={addToCart} />
                             </ScrollArea>
                         </CardContent>
@@ -232,6 +204,7 @@ export default function SalesDashboard({ auth }: SalesDashboardProps) {
                     updateQuantity={updateQuantity}
                     clearCart={clearCart}
                     handleCheckout={handleCheckout}
+                    removeItem={removeItem}
                 />
             </div>
 

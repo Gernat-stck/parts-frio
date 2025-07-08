@@ -1,7 +1,8 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Product } from '@/types/products';
-import { Minus, Plus, Receipt, ShoppingCart, Trash2 } from 'lucide-react';
+import type { Product } from '@/types/products';
+import { Minus, Plus, Receipt, ShoppingCart, Trash2, X } from 'lucide-react';
+import { ScrollArea } from '../ui/scroll-area';
 
 interface CartItem extends Product {
     quantity: number;
@@ -13,11 +14,20 @@ interface ShoppingCartPanelProps {
     availableProducts: Product[];
     cartTotals: { subtotal: number; tax: number; total: number };
     updateQuantity: (productId: number, newQuantity: number) => void;
+    removeItem: (productId: number) => void;
     clearCart: () => void;
     handleCheckout: () => void;
 }
 
-export function ShoppingCartPanel({ cart, availableProducts, cartTotals, updateQuantity, clearCart, handleCheckout }: ShoppingCartPanelProps) {
+export function ShoppingCartPanel({
+    cart,
+    availableProducts,
+    cartTotals,
+    updateQuantity,
+    removeItem,
+    clearCart,
+    handleCheckout,
+}: ShoppingCartPanelProps) {
     return (
         <div className="space-y-4">
             <Card>
@@ -28,7 +38,7 @@ export function ShoppingCartPanel({ cart, availableProducts, cartTotals, updateQ
                     </CardTitle>
                     {cart.length > 0 && (
                         <Button variant="outline" size="sm" onClick={clearCart}>
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-4 w-4" /> Borrar Carrito
                         </Button>
                     )}
                 </CardHeader>
@@ -41,39 +51,64 @@ export function ShoppingCartPanel({ cart, availableProducts, cartTotals, updateQ
                     ) : (
                         <div className="space-y-3">
                             <div className="max-h-[45vh] overflow-auto">
-                                {cart.map((item) => (
-                                    <div key={item.id} className="flex items-center gap-2 rounded border p-2">
-                                        <div className="relative h-8 w-8 flex-shrink-0">
-                                            <img src={item.image || '/placeholder.svg'} alt={item.name} className="rounded object-cover" />
-                                        </div>
-                                        <div className="min-w-0 flex-1">
-                                            <div className="truncate text-xs font-medium">{item.name}</div>
-                                            <div className="text-xs text-green-600">${item.price.toFixed(2)}</div>
-                                        </div>
-                                        <div className="flex items-center gap-1">
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                                                className="h-6 w-6 p-0"
-                                            >
-                                                <Minus className="h-3 w-3" />
-                                            </Button>
-                                            <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                                className="h-6 w-6 p-0"
-                                                disabled={item.quantity >= (availableProducts.find((p) => p.id === item.id)?.stock || 0)}
-                                            >
-                                                <Plus className="h-3 w-3" />
-                                            </Button>
-                                        </div>
-                                        <div className="text-right text-sm font-bold">${item.subtotal.toFixed(2)}</div>
+                                <ScrollArea className="h-[45vh] w-full rounded-md border">
+                                    <div className="space-y-2 p-2">
+                                        {cart.map((item) => (
+                                            <div key={item.id} className="flex w-full flex-col gap-2 rounded border p-3">
+                                                {/* Primera fila: Imagen, nombre del producto y botón eliminar */}
+                                                <div className="flex items-start gap-2">
+                                                    <div className="relative h-10 w-10 flex-shrink-0">
+                                                        <img
+                                                            src={item.image || '/placeholder.svg'}
+                                                            alt={item.name}
+                                                            className="h-full w-full rounded object-cover"
+                                                        />
+                                                    </div>
+                                                    <div className="min-w-0 flex-1">
+                                                        <div className="text-sm leading-tight font-medium break-words">{item.name}</div>
+                                                        <div className="mt-1 text-sm text-green-600">${item.price.toFixed(2)}</div>
+                                                    </div>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        onClick={() => removeItem(item.id)}
+                                                        className="h-6 w-6 p-0 text-red-500 hover:bg-red-50 hover:text-red-700"
+                                                        title="Eliminar producto"
+                                                    >
+                                                        <X className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+
+                                                {/* Segunda fila: Controles de cantidad y subtotal */}
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                                            className="h-7 w-7 p-0"
+                                                        >
+                                                            <Minus className="h-3 w-3" />
+                                                        </Button>
+                                                        <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                                            className="h-7 w-7 p-0"
+                                                            disabled={item.quantity >= (availableProducts.find((p) => p.id === item.id)?.stock || 0)}
+                                                        >
+                                                            <Plus className="h-3 w-3" />
+                                                        </Button>
+                                                    </div>
+                                                    <div className="text-sm font-bold">${item.subtotal.toFixed(2)}</div>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
-                                ))}
+                                </ScrollArea>
                             </div>
+
                             {/* Totales */}
                             <div className="space-y-2 border-t pt-3">
                                 <div className="flex justify-between text-sm">
