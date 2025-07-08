@@ -1,4 +1,4 @@
-import { HandCoins, LayoutGrid, ListChecks, UserRoundCog } from 'lucide-react';
+import { BookUser, FileClock, HandCoins, LayoutGrid, ListChecks, UserRoundCog } from 'lucide-react';
 import { NavItem } from '../types';
 
 export const adminNavItems: NavItem[] = [
@@ -21,7 +21,17 @@ export const adminNavItems: NavItem[] = [
         title: 'Punto de Venta',
         href: route('admin.sales'),
         icon: HandCoins,
-    }
+    
+    },{
+        title: 'Historial de Ventas',
+        href: route('admin.sales.history'),
+        icon: FileClock,
+    },
+    {
+        title: 'Historial de Clientes',
+        href: route('admin.sales.record'),
+        icon: BookUser,
+    },
 
 ];
 
