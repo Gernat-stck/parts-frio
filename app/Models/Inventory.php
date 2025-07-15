@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\TipoItem;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -24,9 +25,13 @@ class Inventory extends Model
     protected $fillable = [
         'product_name',
         'product_code',
+        'category',
+        'tipo_item',
         'description',
         'stock',
         'img_product',
+        'min_stock',
+        'max_stock',
         'price'
     ];
 
@@ -38,5 +43,6 @@ class Inventory extends Model
     protected $casts = [
         'price' => 'decimal:2',
         'stock' => 'integer',
+        'tipo_item' => TipoItem::class,
     ];
 }
