@@ -52,7 +52,28 @@ class AdminController extends Controller
      */
     public function createSale()
     {
-        return Inertia::render('admin/sales/sales');
+        return Inertia::render('admin/sales/sale-point/sales');
+    }
+    /**
+     * Display receiver form 
+     */
+    public function receiverForm()
+    {
+        return Inertia::render('admin/sales/sale-point/receiver');
+    }
+    /**
+     * Display payment method form
+     */
+    public function paymentMethod()
+    {
+        return Inertia::render('admin/sales/sale-point/payment-method');
+    }
+    /**
+     * Show invoice
+     */
+    public function showInvoice()
+    {
+        return Inertia::render('admin/sales/sale-point/invoice');
     }
     /**
      *  Display the sales history page
