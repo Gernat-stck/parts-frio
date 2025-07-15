@@ -15,10 +15,15 @@ return new class extends Migration
             $table->id();
             $table->string('product_name')->unique();
             $table->string('product_code')->unique();
+            $table->string('category');
+            $table->unsignedTinyInteger('tipo_item');
             $table->string('description');
             $table->unsignedBigInteger('stock');
+            $table->decimal('ivaItem', 5, 2)->default(0.00); 
+            $table->decimal('price', 8, 2)->default(0.00);
             $table->string('img_product');
-            $table->decimal('price', 8, 2);
+            $table->unsignedInteger('min_stock')->default(0);
+            $table->unsignedInteger('max_stock')->default(3);
             $table->timestamps();
         });
     }

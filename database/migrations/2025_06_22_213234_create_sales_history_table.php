@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('numeroControl')->index(); // Número de control del DTE
             $table->string('codigoGeneracion')->unique(); // Código de generación del DTE
             $table->string('tipoContingencia')->nullable(); // Tipo de contingencia (si aplica)
-            $table->string('motivoContingencia')->nullable(); // Motivo de la contingencia (si aplica)
+            $table->string('motivoContingencia')->nullable()->max(150)->min(5); // Motivo de la contingencia (si aplica)
             $table->string('tipoModelo'); // Modelo del DTE (Factura Electrónica, Nota de Crédito, etc.)
             $table->string('horaEmi');
             $table->string('fechaEmi')->index();
