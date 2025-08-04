@@ -14,6 +14,7 @@ import { CustomerForm } from './customer-form';
 import { ShoppingCartPanel } from './shopping-cart-panel';
 import { CartItem, Sale } from '../../types/invoice';
 import { Customer, Seller } from '../../types/invoice-persons';
+import { router } from '@inertiajs/react';
 
 interface SalesDashboardProps {
     auth: Auth;
@@ -106,7 +107,8 @@ export default function SalesDashboard({ auth }: SalesDashboardProps) {
     // Procesar venta
     const handleCheckout = () => {
         if (cart.length === 0) return;
-        setIsCustomerFormOpen(true);
+        console.log('Cart before checkout:', cart);
+        router.get(route('admin.sales.receiver')); 
     };
 
     const handleCustomerSubmit = (customer: Customer) => {
@@ -123,7 +125,6 @@ export default function SalesDashboard({ auth }: SalesDashboardProps) {
             total: cartTotals.total,
             status: 'completed',
         };
-
         setCurrentSale(sale);
         setCurrentCustomer(customer);
         setIsCustomerFormOpen(false);

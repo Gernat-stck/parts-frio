@@ -1,0 +1,180 @@
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+interface PaymentData {
+    condicionOperacion: number;
+    pagos: Array<{
+        codigo: string;
+        montoPago: number;
+        referencia: string;
+    }>;
+}
+
+interface PaymentStepProps {
+    data: PaymentData;
+    setData: (data: PaymentData) => void;
+    cartItems: any[];
+    onNext: () => void;
+    onPrev: () => void;
+}
+
+const formasPago = [
+    { value: '01', label: 'Billetes y monedas' },
+    { value: '02', label: 'Tarjeta de crédito' },
+    { value: '03', label: 'Tarjeta de débito' },
+    { value: '04', label: 'Cheque' },
+    { value: '05', label: 'Transferencia bancaria' },
+    { value: '06', label: 'Depósito bancario' },
+    { value: '99', label: 'Otros' },
+];
+
+export default function PaymentStep({ data, setData, cartItems, onNext, onPrev }: PaymentStepProps) {
+    const calculateTotal = () => {
+        const subtotal = cartItems.reduce((total, item) => {
+            return total + (item.cantidad * item.precioUni - item.montoDescu);
+        }, 0);
+        const iva = subtotal * 0.13;
+        return subtotal + iva;
+    };
+
+    const total = calculateTotal();
+
+    const updatePaymentMethod = (codigo: string) => {
+        setData({
+            ...data,
+            pagos: [
+                {
+                    codigo,
+                    montoPago: total,
+                    referencia: data.pagos[0]?.referencia || '',
+                },
+            ],
+        });
+    };
+
+    const updateReference = (referencia: string) => {
+        setData({
+            ...data,
+            pagos: [
+                {
+                    ...data.pagos[0],
+                    referencia,
+                },
+            ],
+        });
+    };
+
+    const updateCondition = (condicion: string) => {
+        setData({
+            ...data,
+            condicionOperacion: Number.parseInt(condicion),
+        });
+    };
+
+    return (
+        <div className="space-y-6">
+            <Card className="border-0">
+                <CardHeader>
+                    <CardTitle>Método de Pago</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <div className="rounded-lg bg-blue-50 p-4 dark:bg-blue-500/20">
+                        <div className="text-2xl font-bold text-blue-900 dark:text-blue-100">Total a Pagar: ${total.toFixed(2)}</div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <Label className="text-base font-semibold">Condición de Operación</Label>
+                        <RadioGroup
+                            value={data.condicionOperacion.toString()}
+                            onValueChange={updateCondition}
+                            className="grid grid-cols-1 gap-4 md:grid-cols-3"
+                        >
+                            <div className="flex items-center space-x-2 rounded-lg border p-4">
+                                <RadioGroupItem value="1" id="contado" />
+                                <Label htmlFor="contado" className="cursor-pointer">
+                                    <div className="font-medium">Contado</div>
+                                    <div className="text-sm text-gray-500">Pago inmediato</div>
+                                </Label>
+                            </div>
+                            <div className="flex items-center space-x-2 rounded-lg border p-4">
+                                <RadioGroupItem value="2" id="credito" />
+                                <Label htmlFor="credito" className="cursor-pointer">
+                                    <div className="font-medium">Crédito</div>
+                                    <div className="text-sm text-gray-500">Pago a plazo</div>
+                                </Label>
+                            </div>
+                            <div className="flex items-center space-x-2 rounded-lg border p-4">
+                                <RadioGroupItem value="3" id="consignacion" />
+                                <Label htmlFor="consignacion" className="cursor-pointer">
+                                    <div className="font-medium">Consignación</div>
+                                    <div className="text-sm text-gray-500">Pago por consignación</div>
+                                </Label>
+                            </div>
+                        </RadioGroup>
+                    </div>
+
+                    <div className="space-y-4">
+                        <Label className="text-base font-semibold">Forma de Pago</Label>
+                        <Select value={data.pagos[0]?.codigo} onValueChange={updatePaymentMethod}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Seleccionar forma de pago" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {formasPago.map((forma) => (
+                                    <SelectItem key={forma.value} value={forma.value}>
+                                        {forma.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {data.pagos[0]?.codigo && data.pagos[0].codigo !== '01' && (
+                        <div className="space-y-2">
+                            <Label htmlFor="referencia">Referencia de Pago</Label>
+                            <Input
+                                id="referencia"
+                                value={data.pagos[0]?.referencia || ''}
+                                onChange={(e) => updateReference(e.target.value)}
+                                placeholder="Número de transacción, cheque, etc."
+                            />
+                        </div>
+                    )}
+
+                    <div className="rounded-lg bg-gray-50 p-4 dark:bg-blue-500/20">
+                        <h3 className="mb-2 font-semibold">Resumen del Pago</h3>
+                        <div className="space-y-1 text-sm">
+                            <div className="flex justify-between">
+                                <span>Forma de pago:</span>
+                                <span>{formasPago.find((f) => f.value === data.pagos[0]?.codigo)?.label || 'No seleccionado'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span>Monto:</span>
+                                <span>${data.pagos[0]?.montoPago?.toFixed(2) || '0.00'}</span>
+                            </div>
+                            {data.pagos[0]?.referencia && (
+                                <div className="flex justify-between">
+                                    <span>Referencia:</span>
+                                    <span>{data.pagos[0].referencia}</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <div className="flex justify-between">
+                <Button variant="outline" onClick={onPrev}>
+                    Volver a Datos del Cliente
+                </Button>
+                <Button onClick={onNext} disabled={!data.pagos[0]?.codigo}>
+                    Generar Factura
+                </Button>
+            </div>
+        </div>
+    );
+}

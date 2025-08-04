@@ -23,10 +23,18 @@ export default function DashboardV3() {
                 {/* Tabs para diferentes vistas */}
                 <Tabs defaultValue="overview" className="space-y-6">
                     <TabsList className="grid w-full grid-cols-4 bg-white/80 backdrop-blur-sm">
-                        <TabsTrigger value="overview">Vista General</TabsTrigger>
-                        <TabsTrigger value="sales">Ventas</TabsTrigger>
-                        <TabsTrigger value="products">Productos</TabsTrigger>
-                        <TabsTrigger value="team">Equipo</TabsTrigger>
+                        <TabsTrigger value="overview" className="dark:text-accent">
+                            Vista General
+                        </TabsTrigger>
+                        <TabsTrigger value="sales" className="dark:text-accent">
+                            Ventas
+                        </TabsTrigger>
+                        <TabsTrigger value="products" className="dark:text-accent">
+                            Productos
+                        </TabsTrigger>
+                        <TabsTrigger value="team" className="dark:text-accent">
+                            Equipo
+                        </TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="overview" className="space-y-6">
