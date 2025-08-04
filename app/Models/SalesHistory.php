@@ -35,6 +35,7 @@ class SalesHistory extends Model
         'tipoMoneda',
         'nitReceiver',
         'estado',
+        'sello_recibido',
         'json_enviado',
         'json_recibido'
     ];

@@ -1,9 +1,11 @@
 import PaymentStep from '@/components/invoice/payment-step';
+import { INITIAL_PAYMENT } from '@/constants/salesConstants';
 import AppLayout from '@/layouts/app-layout';
 import { adminNavItems } from '@/lib/nav-items';
-import { Auth, type BreadcrumbItem } from '@/types';
+import { type BreadcrumbItem } from '@/types';
+import { CartItem, Payment } from '@/types/invoice';
 import { Head, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -20,40 +22,24 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-interface PaymentMethodProps {
-    auth: Auth;
-}
-export default function PaymentMethod({ auth }: PaymentMethodProps) {
-    const [cartItems] = useState([
-        {
-            codigo: 'A101714',
-            descripcion: 'Coca-Cola Normal Lata 12 Oz',
-            cantidad: 2,
-            precioUni: 0.82,
-            montoDescu: 0.16,
-        },
-        {
-            codigo: 'B0000404',
-            descripcion: 'Bebida De La Granja Sabor Naranja 500Ml',
-            cantidad: 1,
-            precioUni: 1.05,
-            montoDescu: 0.0,
-        },
-    ]);
+export default function PaymentMethod() {
+    const [cartItems, setCartItems] = useState<CartItem[]>([]);
+    const [paymentData, setPaymentData] = useState<Payment>(INITIAL_PAYMENT);
 
-    const [paymentData, setPaymentData] = useState({
-        condicionOperacion: 1,
-        pagos: [
-            {
-                codigo: '01',
-                montoPago: 0,
-                referencia: '',
-            },
-        ],
-    });
+    useEffect(() => {
+        const raw = localStorage.getItem('cart');
+        if (raw) {
+            try {
+                const parsed: CartItem[] = JSON.parse(raw);
+                setCartItems(parsed);
+            } catch (error) {
+                console.error('Error parsing cart data:', error);
+            }
+        }
+    }, []);
 
-    console.log('PaymentMethod', auth);
     const nextStep = () => {
+        localStorage.setItem('payment', JSON.stringify(paymentData));
         router.get(route('admin.sales.invoice'));
     };
 

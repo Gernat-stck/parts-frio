@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-
 use Illuminate\Database\Eloquent\Relations\Pivot;
 
 class RoleUser extends Pivot
@@ -16,8 +15,9 @@ class RoleUser extends Pivot
     protected $fillable = ['user_id', 'role_slug'];
 
     public $incrementing = false;
-
     public $timestamps = false;
+
+    protected $primaryKey = ['user_id', 'role_slug'];
 
     public function user()
     {

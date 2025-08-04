@@ -32,7 +32,13 @@ class Inventory extends Model
         'img_product',
         'min_stock',
         'max_stock',
-        'price'
+        'price',
+        'ivaItem',
+        'psv',
+        'uniMedida',
+        'precioUni',
+        'tributos',
+        'montoDescu',
     ];
 
     /**
@@ -42,7 +48,15 @@ class Inventory extends Model
      */
     protected $casts = [
         'price' => 'decimal:2',
+        'ivaItem' => 'decimal:2',
+        'psv' => 'decimal:2',
+        'precioUni' => 'decimal:2',
+        'montoDescu' => 'decimal:2',
         'stock' => 'integer',
+        'min_stock' => 'integer',
+        'max_stock' => 'integer',
+        'uniMedida' => 'integer',
         'tipo_item' => TipoItem::class,
+        'tributos' => 'array',
     ];
 }

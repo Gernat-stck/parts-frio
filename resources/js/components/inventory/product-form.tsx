@@ -1,245 +1,241 @@
-import type React from 'react';
-
-import { useEffect, useState } from 'react';
-
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { Product } from '@/types/products';
+import { useProductForm } from '@/hooks/useProductForm';
+import { Edit3, Plus, Save, Wand2 } from 'lucide-react';
+import { useState } from 'react';
+import { toast } from 'sonner';
+import type { ProductData } from '../../types/products';
+import { DecimalField } from '../decimal-field';
+import { FormField } from '../form-field';
+import { ImageUploader } from '../image-uploader';
+import { NumericField } from '../numeric-field';
+import { Label } from '../ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { CategorySelect } from './category-select';
+import { StockStatus } from './stock-status';
 
+function generateProductCode(productName: string): string {
+    // Extraer letras significativas del nombre
+    const cleaned = productName
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, '') // solo letras y números
+        .slice(0, 3); // máximo 3 caracteres
 
+    const prefix = cleaned.padEnd(3, 'X'); // rellena si es corto
+    const randomNumber = Math.floor(100 + Math.random() * 900); // 3 dígitos
 
-interface ProductFormProps {
-    isOpen: boolean;
-    onClose: () => void;
-    onSubmit: (product: Omit<Product, 'id'> | Product) => void;
-    product?: Product | null;
-    mode: 'create' | 'edit';
+    return `${prefix}${randomNumber}`;
 }
 
-const categories = ['Electrónicos', 'Accesorios', 'Audio', 'Fotografía', 'Almacenamiento', 'Oficina', 'Gaming'];
+function capitalize(text: string) {
+    return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+}
 
-export function ProductForm({ isOpen, onClose, onSubmit, product, mode }: ProductFormProps) {
-    const [formData, setFormData] = useState({
-        name: '',
-        description: '',
-        price: '',
-        stock: '',
-        minStock: '',
-        image: '',
-        category: '',
-    });
-
-    const [errors, setErrors] = useState<Record<string, string>>({});
-
-    useEffect(() => {
-        if (product && mode === 'edit') {
-            setFormData({
-                name: product.name,
-                description: product.description,
-                price: product.price.toString(),
-                stock: product.stock.toString(),
-                minStock: product.minStock.toString(),
-                image: product.image,
-                category: product.category,
-            });
-        } else {
-            setFormData({
-                name: '',
-                description: '',
-                price: '',
-                stock: '',
-                minStock: '',
-                image: '',
-                category: '',
-            });
-        }
-        setErrors({});
-    }, [product, mode, isOpen]);
-
-    const validateForm = () => {
-        const newErrors: Record<string, string> = {};
-
-        if (!formData.name.trim()) {
-            newErrors.name = 'El nombre es requerido';
-        }
-
-        if (!formData.description.trim()) {
-            newErrors.description = 'La descripción es requerida';
-        }
-
-        if (!formData.price || Number.parseFloat(formData.price) <= 0) {
-            newErrors.price = 'El precio debe ser mayor a 0';
-        }
-
-        if (!formData.stock || Number.parseInt(formData.stock) < 0) {
-            newErrors.stock = 'El stock debe ser mayor o igual a 0';
-        }
-
-        if (!formData.minStock || Number.parseInt(formData.minStock) <= 0) {
-            newErrors.minStock = 'El stock mínimo debe ser mayor a 0';
-        }
-
-        if (!formData.category) {
-            newErrors.category = 'La categoría es requerida';
-        }
-
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-
-        if (!validateForm()) {
-            return;
-        }
-
-        const productData = {
-            name: formData.name.trim(),
-            description: formData.description.trim(),
-            price: Number.parseFloat(formData.price),
-            stock: Number.parseInt(formData.stock),
-            minStock: Number.parseInt(formData.minStock),
-            image: formData.image || '/placeholder.svg?height=80&width=80',
-            category: formData.category,
-        };
-
-        if (mode === 'edit' && product) {
-            onSubmit({ ...productData, id: product.id });
-        } else {
-            onSubmit(productData);
-        }
-
-        onClose();
-    };
-
-    const handleInputChange = (field: string, value: string) => {
-        setFormData((prev) => ({ ...prev, [field]: value }));
-        if (errors[field]) {
-            setErrors((prev) => ({ ...prev, [field]: '' }));
-        }
-    };
+export default function ProductForm(props: {
+    mode: 'create' | 'edit';
+    initialData?: Partial<ProductData>;
+    onCancel?: () => void;
+    isLoading?: boolean;
+    categories?: string[];
+}) {
+    const { form, errors, setField, submit, isEdit } = useProductForm(props.mode, props.initialData);
+    const [customCategories, setCustomCategories] = useState<string[]>([]);
 
     return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
-                <DialogHeader>
-                    <DialogTitle>{mode === 'create' ? 'Crear Nuevo Producto' : 'Editar Producto'}</DialogTitle>
-                </DialogHeader>
+        <div className="w-full">
+            <Card className="w-full border-0 shadow-none">
+                <CardHeader className="px-3 sm:px-6">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-start gap-2 sm:items-center">
+                            <div className="flex-shrink-0">
+                                {isEdit ? <Edit3 className="h-5 w-5 sm:h-6 sm:w-6" /> : <Plus className="h-5 w-5 sm:h-6 sm:w-6" />}
+                            </div>
+                            <div className="min-w-0">
+                                <CardTitle className="text-lg sm:text-xl">{isEdit ? 'Editar Producto' : 'Crear Producto'}</CardTitle>
+                                <CardDescription className="text-sm sm:text-base">
+                                    {isEdit ? 'Actualiza la información existente' : 'Completa los datos para un nuevo producto'}
+                                </CardDescription>
+                            </div>
+                        </div>
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                            <Button disabled={props.isLoading} type="submit" onClick={submit} className="w-full sm:w-auto">
+                                {props.isLoading ? (
+                                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                                ) : (
+                                    <Save className="h-4 w-4" />
+                                )}
+                                <span className="ml-2">{isEdit ? 'Actualizar' : 'Crear'}</span>
+                            </Button>
+                            {props.onCancel && (
+                                <Button variant="outline" onClick={props.onCancel} className="w-full bg-transparent sm:w-auto">
+                                    Cancelar
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+                </CardHeader>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        <div className="space-y-2">
-                            <Label htmlFor="name">Nombre del Producto *</Label>
-                            <Input
-                                id="name"
-                                value={formData.name}
-                                onChange={(e) => handleInputChange('name', e.target.value)}
-                                placeholder="Ej: Laptop Dell XPS 13"
-                                className={errors.name ? 'border-red-500' : ''}
+                <CardContent className="px-3 sm:px-6">
+                    <form onSubmit={submit} className="space-y-4">
+                        {/* Básicos */}
+                        <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
+                            <FormField
+                                id="product_name"
+                                label="Nombre *"
+                                value={form.product_name}
+                                onChange={(e) => setField('product_name', e.target.value)}
+                                error={errors.product_name}
+                                placeholder="Ingresa el nombre del producto"
                             />
-                            {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
+                            <FormField
+                                id="product_code"
+                                label="Código *"
+                                value={form.product_code}
+                                onChange={(e) => setField('product_code', e.target.value)}
+                                error={errors.product_code}
+                                actionButton={{
+                                    icon: <Wand2 className="h-4 w-4" />,
+                                    title: 'Generar código',
+                                    onClick: () => setField('product_code', generateProductCode(form.product_name)),
+                                }}
+                                placeholder="Ingresa o genera un código único"
+                            />
                         </div>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="category">Categoría *</Label>
-                            <Select value={formData.category} onValueChange={(value) => handleInputChange('category', value)}>
-                                <SelectTrigger className={errors.category ? 'border-red-500' : ''}>
-                                    <SelectValue placeholder="Seleccionar categoría" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {categories.map((category) => (
-                                        <SelectItem key={category} value={category}>
-                                            {category}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            {errors.category && <p className="text-sm text-red-500">{errors.category}</p>}
+                        {/* Categoría & Tipo */}
+                        <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
+                            <CategorySelect
+                                value={form.category}
+                                onChange={(val) => setField('category', val)}
+                                custom={customCategories}
+                                onAddCustom={(cat) => {
+                                    const formatted = capitalize(cat);
+                                    if (![...(props.categories ?? []), ...customCategories].includes(formatted)) {
+                                        setCustomCategories((prev) => [...prev, formatted]);
+                                        toast.success(`Categoría "${formatted}" agregada con éxito.`);
+                                    }
+                                    setField('category', formatted);
+                                }}
+                                allStatic={props.categories ?? []}
+                                error={errors.category}
+                            />
+
+                            <FormField id="tipo_item" label="Tipo de Ítem" error={errors.tipo_item}>
+                                <Select value={form.tipo_item.toString()} onValueChange={(val) => setField('tipo_item', Number(val))}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Selecciona el tipo" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="1">Bienes o Producto</SelectItem>
+                                        <SelectItem value="2">Servicios</SelectItem>
+                                        <SelectItem value="3">Bienes y Servicios</SelectItem>
+                                        <SelectItem value="4">Otro</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </FormField>
                         </div>
-                    </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="description">Descripción *</Label>
-                        <Textarea
-                            id="description"
-                            value={formData.description}
-                            onChange={(e) => handleInputChange('description', e.target.value)}
-                            placeholder="Descripción detallada del producto..."
-                            rows={3}
-                            className={errors.description ? 'border-red-500' : ''}
-                        />
-                        {errors.description && <p className="text-sm text-red-500">{errors.description}</p>}
-                    </div>
+                        {/* Descripción */}
+                        <div>
+                            <Label htmlFor="description" className="text-sm font-medium">
+                                Descripción *
+                            </Label>
+                            <Textarea
+                                id="description"
+                                rows={3}
+                                value={form.description}
+                                onChange={(e) => setField('description', e.target.value)}
+                                className={`mt-1 ${errors.description ? 'border-red-500' : ''}`}
+                                placeholder="Ingresa una descripción detallada del producto"
+                            />
+                            {errors.description && <p className="text-xs text-red-500 sm:text-sm">{errors.description}</p>}
+                        </div>
 
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                        <div className="space-y-2">
-                            <Label htmlFor="price">Precio ($) *</Label>
-                            <Input
+                        {/* Precio & IVA */}
+                        <div className="grid gap-4 sm:gap-6 md:grid-cols-3">
+                            <DecimalField
                                 id="price"
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={formData.price}
-                                onChange={(e) => handleInputChange('price', e.target.value)}
-                                placeholder="0.00"
-                                className={errors.price ? 'border-red-500' : ''}
+                                label="Precio con IVA *"
+                                value={form.price}
+                                setValue={(val) => setField('price', val)}
+                                error={errors.price}
+                                prefix="$"
                             />
-                            {errors.price && <p className="text-sm text-red-500">{errors.price}</p>}
+
+                            <FormField
+                                id="ivaItem"
+                                label="IVA (13%)"
+                                type="number"
+                                step={0.01}
+                                value={Number.parseFloat((form.price * 0.13).toFixed(2))}
+                                disabled
+                                prefix="$"
+                                error={errors.ivaItem}
+                            />
+
+                            <FormField
+                                id="precioUni"
+                                label="Precio sin IVA"
+                                type="number"
+                                step={0.01}
+                                value={Number.parseFloat((form.price - form.price * 0.13).toFixed(2))}
+                                disabled
+                                prefix="$"
+                                error={errors.precioUni}
+                            />
                         </div>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="stock">Stock Actual *</Label>
-                            <Input
+                        {/* Stock */}
+                        <div className="grid gap-4 sm:gap-6 md:grid-cols-3">
+                            <NumericField
                                 id="stock"
-                                type="number"
-                                min="0"
-                                value={formData.stock}
-                                onChange={(e) => handleInputChange('stock', e.target.value)}
-                                placeholder="0"
-                                className={errors.stock ? 'border-red-500' : ''}
+                                label="Stock Actual"
+                                value={form.stock}
+                                setValue={(val) => setField('stock', val)}
+                                error={errors.stock}
+                                placeholder="Stock actual"
                             />
-                            {errors.stock && <p className="text-sm text-red-500">{errors.stock}</p>}
+
+                            <NumericField
+                                id="min_stock"
+                                label="Stock Mínimo"
+                                value={form.min_stock}
+                                setValue={(val) => setField('min_stock', val)}
+                                error={errors.min_stock}
+                                placeholder="Stock mínimo"
+                            />
+
+                            <NumericField
+                                id="max_stock"
+                                label="Stock Máximo"
+                                value={form.max_stock}
+                                setValue={(val) => setField('max_stock', val)}
+                                error={errors.max_stock}
+                                placeholder="Stock máximo"
+                            />
                         </div>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="minStock">Stock Mínimo *</Label>
-                            <Input
-                                id="minStock"
-                                type="number"
-                                min="1"
-                                value={formData.minStock}
-                                onChange={(e) => handleInputChange('minStock', e.target.value)}
-                                placeholder="1"
-                                className={errors.minStock ? 'border-red-500' : ''}
+                        {/* Imagen */}
+                        <div className="grid grid-cols-2 space-y-1">
+                            <ImageUploader
+                                value={form.img_product}
+                                onChange={(base64) => setField('img_product', base64)}
+                                originalValue={props.initialData?.img_product || ''}
+                                label="Imagen del producto"
+                                name="img_product"
+                                previewPath="/private/"
                             />
-                            {errors.minStock && <p className="text-sm text-red-500">{errors.minStock}</p>}
+
+                            {/* Estado de Stock */}
+                            <div className="flex items-end justify-end">
+                                {/* Added flex, items-end, justify-end */}
+                                <StockStatus stock={form.stock} min={form.min_stock} />
+                            </div>
                         </div>
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="image">URL de Imagen (Opcional)</Label>
-                        <Input
-                            id="image"
-                            type="url"
-                            value={formData.image}
-                            onChange={(e) => handleInputChange('image', e.target.value)}
-                            placeholder="https://ejemplo.com/imagen.jpg"
-                        />
-                    </div>
-
-                    <div className="flex justify-end gap-3 pt-4">
-                        <Button type="button" variant="outline" onClick={onClose}>
-                            Cancelar
-                        </Button>
-                        <Button type="submit">{mode === 'create' ? 'Crear Producto' : 'Guardar Cambios'}</Button>
-                    </div>
-                </form>
-            </DialogContent>
-        </Dialog>
+                    </form>
+                </CardContent>
+            </Card>
+        </div>
     );
 }

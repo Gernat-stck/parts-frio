@@ -13,6 +13,10 @@ return [
     | a conventional file to locate the various service credentials.
     |
     */
+    'hacienda' => [
+        'endpoint' => env('HACIENDA_API_URL', 'https://api.hacienda.gob.sv/dte'), // o el que uses
+        'token' => env('HACIENDA_API_TOKEN', 'llllll'),
+    ],
 
     'postmark' => [
         'token' => env('POSTMARK_TOKEN'),

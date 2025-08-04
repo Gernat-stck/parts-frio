@@ -1,7 +1,7 @@
-import { Search } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Search } from 'lucide-react';
 
 interface InventoryFiltersProps {
     searchTerm: string;
@@ -20,24 +20,24 @@ export const InventoryFilters = ({
     onCategoryChange,
     stockFilter,
     onStockChange,
-    categories
+    categories,
 }: InventoryFiltersProps) => {
     return (
         <Card className="border-0">
-            <CardContent>
-                <div className="flex flex-col gap-4">
+            <CardContent className="p-3 sm:p-6">
+                <div className="flex flex-col gap-3 sm:gap-4">
                     <div className="relative">
                         <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transform opacity-50" />
                         <Input
                             placeholder="Buscar productos..."
                             value={searchTerm}
                             onChange={(e) => onSearchChange(e.target.value)}
-                            className="pl-10"
+                            className="pl-10 text-sm sm:text-base"
                         />
                     </div>
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2">
                         <Select value={categoryFilter} onValueChange={onCategoryChange}>
-                            <SelectTrigger>
+                            <SelectTrigger className="text-sm sm:text-base">
                                 <SelectValue placeholder="Todas las categorías" />
                             </SelectTrigger>
                             <SelectContent>
@@ -50,7 +50,7 @@ export const InventoryFilters = ({
                             </SelectContent>
                         </Select>
                         <Select value={stockFilter} onValueChange={onStockChange}>
-                            <SelectTrigger>
+                            <SelectTrigger className="text-sm sm:text-base">
                                 <SelectValue placeholder="Todos los estados" />
                             </SelectTrigger>
                             <SelectContent>

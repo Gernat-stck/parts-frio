@@ -1,46 +1,40 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Factura } from '@/data/factura-types';
-import { facturasMock } from '@/data/facturas-mock';
-import { AlertTriangle, Calendar, CheckCircle, Eye, FileText, Filter, Search, User, X } from 'lucide-react';
-import { useState } from 'react';
+import { AlertTriangle, Eye, MoreVertical, X } from 'lucide-react';
+import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { filtrarFacturas } from '../../hooks/use-invoice';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
+import { Pagination } from '../ui/pagination';
+import { DialogAnularFactura } from './anulation-dialog';
+import { DialogCertificarFacturas } from './certificate-dialog';
+import { DialogDetallesFactura } from './detail-dialog';
+import FilterAndSearch from './filter-search-component';
 
-export default function HistorialFacturas() {
-    const [facturas, setFacturas] = useState<Factura[]>(facturasMock);
+export default function HistorialFacturas({ facturasRec }: { facturasRec: Factura[] }) {
+    const [facturas, setFacturas] = useState<Factura[]>(facturasRec || []);
     const [busqueda, setBusqueda] = useState('');
     const [filtroEstado, setFiltroEstado] = useState('todos');
-    const [filtroPuntoVenta, setFiltroPuntoVenta] = useState('todos');
     const [facturaSeleccionada, setFacturaSeleccionada] = useState<Factura | null>(null);
     const [mostrarDetalles, setMostrarDetalles] = useState(false);
     const [mostrarAnular, setMostrarAnular] = useState(false);
     const [mostrarCertificar, setMostrarCertificar] = useState(false);
     const [contraseñaAdmin, setContraseñaAdmin] = useState('');
     const [facturasSeleccionadas, setFacturasSeleccionadas] = useState<number[]>([]);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [facturasPaginadas, setFacturasPaginadas] = useState<Factura[]>([]);
+
+    const handlePaginatedData = useCallback((data: Factura[]) => {
+        setFacturasPaginadas(data);
+    }, []);
 
     // Filtrar facturas
-    const facturasFiltradas = facturas.filter((factura) => {
-        const busquedaLimpia = busqueda.trim().toLowerCase();
-        const coincideBusqueda =
-            factura.receptor.toLowerCase().includes(busquedaLimpia) ||
-            factura.documentoReceptor.includes(busquedaLimpia) ||
-            (factura.codigoGeneracion && factura.codigoGeneracion.trim().toLowerCase().includes(busquedaLimpia));
+    const facturasFiltradas = useMemo(() => filtrarFacturas(facturas, busqueda, filtroEstado), [facturas, busqueda, filtroEstado]);
 
-        const coincideEstado = filtroEstado === 'todos' || factura.estado.toLowerCase() === filtroEstado;
-        const coincidePuntoVenta = filtroPuntoVenta === 'todos' || factura.puntoVenta === filtroPuntoVenta;
-
-        return coincideBusqueda && coincideEstado && coincidePuntoVenta;
-    });
-
-    const facturasContingencia = facturas.filter((f) => f.estado === 'Contingencia');
+    const facturasContingencia = facturas.filter((f) => f.estado === 'rechazada');
 
     const handleVerDetalles = (factura: Factura) => {
         setFacturaSeleccionada(factura);
@@ -54,7 +48,7 @@ export default function HistorialFacturas() {
 
     const confirmarAnulacion = () => {
         if (contraseñaAdmin === 'admin123' && facturaSeleccionada) {
-            setFacturas((prev) => prev.map((f) => (f.id === facturaSeleccionada.id ? { ...f, estado: 'Anulada' } : f)));
+            setFacturas((prev) => prev.map((f) => (f.id === facturaSeleccionada.id ? { ...f, estado: 'anulada' } : f)));
             setMostrarAnular(false);
             setContraseñaAdmin('');
             setFacturaSeleccionada(null);
@@ -78,7 +72,7 @@ export default function HistorialFacturas() {
         setFacturas((prev) =>
             prev.map((f) =>
                 facturasSeleccionadas.includes(f.id)
-                    ? { ...f, estado: 'Certificada', codigoGeneracion: `DTE-001-2024-${String(f.id).padStart(6, '0')}` }
+                    ? { ...f, estado: 'aceptado', codigoGeneracion: `DTE-001-2024-${String(f.id).padStart(6, '0')}` }
                     : f,
             ),
         );
@@ -87,269 +81,251 @@ export default function HistorialFacturas() {
     };
 
     return (
-        <div className="container mx-auto space-y-6 p-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold">Historial de Facturas</h1>
-                    <p className="text-muted-foreground">Gestiona y consulta todas las facturas emitidas</p>
+        <div className="container mx-auto space-y-4 p-2 sm:p-4 lg:p-6">
+            {/* Header Section - Responsive */}
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="space-y-1">
+                    <h1 className="text-2xl font-bold sm:text-3xl">Historial de Facturas</h1>
+                    <p className="text-sm text-muted-foreground sm:text-base">Gestiona y consulta todas las facturas emitidas</p>
                 </div>
                 {facturasContingencia.length > 0 && (
-                    <Button onClick={() => setMostrarCertificar(true)} className="bg-orange-600 hover:bg-orange-700">
+                    <Button onClick={() => setMostrarCertificar(true)} className="w-full bg-orange-600 hover:bg-orange-700 sm:w-auto" size="sm">
                         <AlertTriangle className="mr-2 h-4 w-4" />
-                        Certificar Contingencias ({facturasContingencia.length})
+                        <span className="hidden sm:inline">Certificar Contingencias</span>
+                        <span className="sm:hidden">Certificar</span>
+                        <span className="ml-1">({facturasContingencia.length})</span>
                     </Button>
                 )}
             </div>
 
             {/* Filtros y búsqueda */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Filter className="h-5 w-5" />
-                        Filtros y Búsqueda
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-                        <div className="relative">
-                            <Search className="absolute top-3 left-3 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                placeholder="Buscar por receptor, documento o código..."
-                                value={busqueda}
-                                onChange={(e) => setBusqueda(e.target.value)}
-                                className="pl-10"
-                            />
-                        </div>
-                        <Select value={filtroEstado} onValueChange={setFiltroEstado}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Estado" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="todos">Todos los estados</SelectItem>
-                                <SelectItem value="certificada">Certificada</SelectItem>
-                                <SelectItem value="contingencia">Contingencia</SelectItem>
-                                <SelectItem value="anulada">Anulada</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <Select value={filtroPuntoVenta} onValueChange={setFiltroPuntoVenta}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Punto de Venta" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="todos">Todos los puntos</SelectItem>
-                                <SelectItem value="001">Punto 001</SelectItem>
-                                <SelectItem value="002">Punto 002</SelectItem>
-                                <SelectItem value="003">Punto 003</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <Button
-                            variant="outline"
-                            onClick={() => {
-                                setBusqueda('');
-                                setFiltroEstado('todos');
-                                setFiltroPuntoVenta('todos');
-                            }}
-                        >
-                            Limpiar Filtros
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
+            <FilterAndSearch busqueda={busqueda} setBusqueda={setBusqueda} filtroEstado={filtroEstado} setFiltroEstado={setFiltroEstado} />
 
-            {/* Tabla de facturas */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Facturas ({facturasFiltradas.length})</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Fecha</TableHead>
-                                <TableHead>Código</TableHead>
-                                <TableHead>Receptor</TableHead>
-                                <TableHead>Documento</TableHead>
-                                <TableHead>Punto Venta</TableHead>
-                                <TableHead>Monto</TableHead>
-                                <TableHead>Estado</TableHead>
-                                <TableHead>Acciones</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {facturasFiltradas.map((factura) => (
-                                <TableRow key={factura.id}>
-                                    <TableCell>{factura.fechaGeneracion}</TableCell>
-                                    <TableCell>
-                                        {factura.codigoGeneracion || (
-                                            <Badge variant="outline" className="text-orange-600">
-                                                Sin código
-                                            </Badge>
-                                        )}
-                                    </TableCell>
-                                    <TableCell className="font-medium">{factura.receptor}</TableCell>
-                                    <TableCell>{factura.documentoReceptor}</TableCell>
-                                    <TableCell>{factura.puntoVenta}</TableCell>
-                                    <TableCell>${factura.monto.toFixed(2)}</TableCell>
-                                    <TableCell>
-                                        <Badge
-                                            variant={
-                                                factura.estado === 'Certificada'
-                                                    ? 'default'
-                                                    : factura.estado === 'Contingencia'
-                                                      ? 'secondary'
-                                                      : 'destructive'
-                                            }
-                                        >
-                                            {factura.estado}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex gap-2">
-                                            <Button size="sm" variant="outline" onClick={() => handleVerDetalles(factura)}>
-                                                <Eye className="h-4 w-4" />
-                                            </Button>
-                                            {factura.estado !== 'Anulada' && (
-                                                <Button size="sm" variant="destructive" onClick={() => handleAnularFactura(factura)}>
-                                                    <X className="h-4 w-4" />
-                                                </Button>
-                                            )}
-                                        </div>
-                                    </TableCell>
+            {/* Desktop Table View */}
+            <div className="hidden lg:block">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center justify-between">
+                            <span>Facturas ({facturasFiltradas.length})</span>
+                            <Badge variant="secondary" className="text-xs">
+                                Actualizado
+                            </Badge>
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="overflow-x-auto">
+                        <Table>
+                            <TableHeader className="bg-muted/40">
+                                <TableRow>
+                                    <TableHead className="text-xs font-semibold whitespace-nowrap text-muted-foreground">Fecha</TableHead>
+                                    <TableHead className="text-xs font-semibold">Código</TableHead>
+                                    <TableHead className="text-xs font-semibold">Receptor</TableHead>
+                                    <TableHead className="text-xs font-semibold">Documento</TableHead>
+                                    <TableHead className="text-right text-xs font-semibold">Monto</TableHead>
+                                    <TableHead className="text-xs font-semibold">Estado</TableHead>
+                                    <TableHead className="text-center text-xs font-semibold">Acciones</TableHead>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
+                            </TableHeader>
+                            <TableBody>
+                                {facturasPaginadas.length > 0 ? (
+                                    facturasPaginadas.map((factura) => (
+                                        <TableRow key={factura.id} className="transition-colors hover:bg-muted/30">
+                                            <TableCell className="text-sm">{factura.fechaGeneracion}</TableCell>
+                                            <TableCell>
+                                                {factura.codigoGeneracion ? (
+                                                    <code className="text-sm text-blue-600">{factura.numeroControl}</code>
+                                                ) : (
+                                                    <Badge variant="outline" className="text-orange-600">
+                                                        Sin código
+                                                    </Badge>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="text-sm font-medium">{factura.receptor}</TableCell>
+                                            <TableCell className="text-sm">{factura.documentoReceptor}</TableCell>
+                                            <TableCell className="text-right text-sm">${factura.monto}</TableCell>
+                                            <TableCell>
+                                                <Badge
+                                                    variant={
+                                                        factura.selloRecibido
+                                                            ? 'default'
+                                                            : factura.estado === 'rechazada'
+                                                              ? 'secondary'
+                                                              : 'destructive'
+                                                    }
+                                                >
+                                                    {factura.selloRecibido
+                                                        ? 'Certificada'
+                                                        : factura.estado === 'rechazada'
+                                                          ? 'Rechazada'
+                                                          : 'Contingencia'}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="sm">
+                                                            <MoreVertical className="h-4 w-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem onClick={() => handleVerDetalles(factura)}>
+                                                            <Eye className="mr-2 h-4 w-4 text-muted-foreground" />
+                                                            Ver detalles
+                                                        </DropdownMenuItem>
+                                                        {factura.estado !== 'anulada' && (
+                                                            <DropdownMenuItem onClick={() => handleAnularFactura(factura)}>
+                                                                <X className="mr-2 h-4 w-4 text-destructive" />
+                                                                Anular
+                                                            </DropdownMenuItem>
+                                                        )}
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <td colSpan={7} className="py-8 text-center text-muted-foreground">
+                                            No se encontraron facturas
+                                        </td>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+            </div>
 
-            {/* Modal de detalles */}
-            <Dialog open={mostrarDetalles} onOpenChange={setMostrarDetalles}>
-                <DialogContent className="max-w-2xl">
-                    <DialogHeader>
-                        <DialogTitle>Detalles de Factura</DialogTitle>
-                    </DialogHeader>
-                    {facturaSeleccionada && (
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label className="text-sm font-medium">Fecha de Generación</Label>
-                                    <div className="flex items-center gap-2">
-                                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                                        <span>{facturaSeleccionada.fechaGeneracion}</span>
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-sm font-medium">Código de Generación</Label>
-                                    <div className="flex items-center gap-2">
-                                        <FileText className="h-4 w-4 text-muted-foreground" />
-                                        <span>{facturaSeleccionada.codigoGeneracion || 'Sin código'}</span>
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-sm font-medium">Receptor</Label>
-                                    <div className="flex items-center gap-2">
-                                        <User className="h-4 w-4 text-muted-foreground" />
-                                        <span>{facturaSeleccionada.receptor}</span>
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-sm font-medium">Documento</Label>
-                                    <span>{facturaSeleccionada.documentoReceptor}</span>
-                                </div>
-                            </div>
+            {/* Mobile/Tablet Card View */}
+            <div className="lg:hidden">
+                <div className="mb-4 flex items-center justify-between">
+                    <h2 className="text-lg font-semibold">Facturas ({facturasFiltradas.length})</h2>
+                    <Badge variant="secondary" className="text-xs">
+                        Actualizado
+                    </Badge>
+                </div>
 
-                            <Separator />
-
-                            <div>
-                                <Label className="text-sm font-medium">Productos/Servicios</Label>
-                                <div className="mt-2 space-y-2">
-                                    {facturaSeleccionada.detalles.productos.map((producto, index) => (
-                                        <div key={index} className="flex items-center justify-between rounded bg-muted p-2">
-                                            <span>{producto.nombre}</span>
-                                            <span>
-                                                {producto.cantidad} x ${producto.precio.toFixed(2)}
-                                            </span>
+                {facturasPaginadas.length > 0 ? (
+                    <div className="space-y-3">
+                        {facturasPaginadas.map((factura) => (
+                            <Card key={factura.id} className="transition-colors hover:bg-muted/30">
+                                <CardContent className="p-4">
+                                    <div className="space-y-3">
+                                        {/* Header Row */}
+                                        <div className="flex items-start justify-between">
+                                            <div className="space-y-1">
+                                                <div className="text-sm font-medium">{factura.receptor}</div>
+                                                <div className="text-xs text-muted-foreground">{factura.fechaGeneracion}</div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Badge
+                                                    variant={
+                                                        factura.selloRecibido
+                                                            ? 'default'
+                                                            : factura.estado === 'rechazada'
+                                                              ? 'secondary'
+                                                              : 'destructive'
+                                                    }
+                                                    className="text-xs"
+                                                >
+                                                    {factura.selloRecibido
+                                                        ? 'Certificada'
+                                                        : factura.estado === 'rechazada'
+                                                          ? 'Rechazada'
+                                                          : 'Contingencia'}
+                                                </Badge>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                                            <MoreVertical className="h-4 w-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem onClick={() => handleVerDetalles(factura)}>
+                                                            <Eye className="mr-2 h-4 w-4 text-muted-foreground" />
+                                                            Ver detalles
+                                                        </DropdownMenuItem>
+                                                        {factura.estado !== 'anulada' && (
+                                                            <DropdownMenuItem onClick={() => handleAnularFactura(factura)}>
+                                                                <X className="mr-2 h-4 w-4 text-destructive" />
+                                                                Anular
+                                                            </DropdownMenuItem>
+                                                        )}
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </div>
                                         </div>
-                                    ))}
-                                </div>
-                            </div>
 
-                            <div className="flex items-center justify-between border-t pt-4">
-                                <span className="font-semibold">Total:</span>
-                                <span className="text-xl font-bold">${facturaSeleccionada.monto.toFixed(2)}</span>
-                            </div>
-                        </div>
-                    )}
-                </DialogContent>
-            </Dialog>
-
-            {/* Modal de anulación */}
-            <Dialog open={mostrarAnular} onOpenChange={setMostrarAnular}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Anular Factura</DialogTitle>
-                        <DialogDescription>
-                            Esta acción no se puede deshacer. Ingrese la contraseña de administrador para continuar.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                        <div>
-                            <Label htmlFor="password">Contraseña de Administrador</Label>
-                            <Input
-                                id="password"
-                                type="password"
-                                value={contraseñaAdmin}
-                                onChange={(e) => setContraseñaAdmin(e.target.value)}
-                                placeholder="Ingrese la contraseña"
-                            />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setMostrarAnular(false)}>
-                            Cancelar
-                        </Button>
-                        <Button variant="destructive" onClick={confirmarAnulacion}>
-                            Anular Factura
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* Modal de certificación */}
-            <Dialog open={mostrarCertificar} onOpenChange={setMostrarCertificar}>
-                <DialogContent className="max-w-2xl">
-                    <DialogHeader>
-                        <DialogTitle>Certificar Facturas en Contingencia</DialogTitle>
-                        <DialogDescription>Seleccione las facturas que desea certificar</DialogDescription>
-                    </DialogHeader>
-                    <div className="max-h-96 space-y-4 overflow-y-auto">
-                        {facturasContingencia.map((factura) => (
-                            <div key={factura.id} className="flex items-center space-x-2 rounded border p-3">
-                                <Checkbox
-                                    id={`factura-${factura.id}`}
-                                    checked={facturasSeleccionadas.includes(factura.id)}
-                                    onCheckedChange={(checked) => handleSeleccionarFactura(factura.id, checked === true)}
-                                />
-                                <div className="flex-1">
-                                    <div className="font-medium">{factura.receptor}</div>
-                                    <div className="text-sm text-muted-foreground">
-                                        {factura.fechaGeneracion} - ${factura.monto.toFixed(2)}
+                                        {/* Details Grid */}
+                                        <div className="grid grid-cols-2 gap-3 text-sm">
+                                            <div>
+                                                <div className="text-xs text-muted-foreground">Código</div>
+                                                <div className="mt-1">
+                                                    {factura.codigoGeneracion ? (
+                                                        <code className="text-xs break-all text-blue-600">{factura.numeroControl}</code>
+                                                    ) : (
+                                                        <Badge variant="outline" className="text-xs text-orange-600">
+                                                            Sin código
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div className="text-xs text-muted-foreground">Monto</div>
+                                                <div className="mt-1 font-medium">${factura.monto}</div>
+                                            </div>
+                                            <div className="col-span-2">
+                                                <div className="text-xs text-muted-foreground">Documento</div>
+                                                <div className="mt-1 break-all">{factura.documentoReceptor}</div>
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                            </div>
+                                </CardContent>
+                            </Card>
                         ))}
                     </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setMostrarCertificar(false)}>
-                            Cancelar
-                        </Button>
-                        <Button onClick={certificarFacturasSeleccionadas} disabled={facturasSeleccionadas.length === 0}>
-                            <CheckCircle className="mr-2 h-4 w-4" />
-                            Certificar Seleccionadas ({facturasSeleccionadas.length})
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                ) : (
+                    <Card>
+                        <CardContent className="py-8 text-center text-muted-foreground">No se encontraron facturas</CardContent>
+                    </Card>
+                )}
+            </div>
+
+            {/* Responsive Pagination */}
+            <div className="flex justify-center">
+                <Pagination
+                    data={facturasFiltradas}
+                    itemsPerPage={5}
+                    currentPage={currentPage}
+                    onPageChange={setCurrentPage}
+                    onPaginatedData={handlePaginatedData}
+                    pageInfo={{
+                        itemName: 'facturas',
+                    }}
+                    maxPageButtons={3} // Reduced for mobile
+                />
+            </div>
+
+            {/* Modal de detalles */}
+            <DialogDetallesFactura open={mostrarDetalles} onOpenChange={setMostrarDetalles} factura={facturaSeleccionada} />
+
+            {/* Modal de anulación */}
+            <DialogAnularFactura
+                open={mostrarAnular}
+                onOpenChange={setMostrarAnular}
+                contraseña={contraseñaAdmin}
+                setContraseña={setContraseñaAdmin}
+                onConfirm={confirmarAnulacion}
+            />
+
+            {/* Modal de certificación */}
+            <DialogCertificarFacturas
+                open={mostrarCertificar}
+                onOpenChange={setMostrarCertificar}
+                facturas={facturasContingencia}
+                seleccionadas={facturasSeleccionadas}
+                onSeleccionar={handleSeleccionarFactura}
+                onConfirm={certificarFacturasSeleccionadas}
+            />
         </div>
     );
 }

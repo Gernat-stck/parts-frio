@@ -15,11 +15,12 @@ export interface DetallesFactura {
 export interface Factura {
     id: number;
     fechaGeneracion: string;
+    numeroControl: string;
     codigoGeneracion: string | null;
     documentoReceptor: string;
-    puntoVenta: string;
     receptor: string;
     monto: number;
-    estado: 'Certificada' | 'Contingencia' | 'Anulada';
+    selloRecibido: string | null;
+    estado: 'aceptado' | 'error' | 'rechazada' | 'anulada';
     detalles: DetallesFactura;
 }

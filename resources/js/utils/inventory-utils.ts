@@ -1,54 +1,53 @@
-import { AlertCircle, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 
-export interface StockStatus {
-    status: 'normal' | 'bajo' | 'critico' | 'sin-stock';
-    label: string;
-    description: string;
-    color: string;
-    textColor: string;
-    icon: React.ComponentType<{ className?: string }>;
-}
-
-export const getStockStatus = (stock: number, minStock: number): StockStatus => {
+/**
+ * Determina el estado del stock de un producto basado en la cantidad actual y el mínimo requerido
+ *
+ * @param stock - Cantidad actual en stock
+ * @param minStock - Cantidad mínima de stock deseada
+ * @returns Objeto con información de estado, etiqueta, colores y descripción
+ */
+export const getStockStatus = (stock: number, minStock: number) => {
     if (stock === 0) {
         return {
             status: 'sin-stock',
             label: 'Sin Stock',
-            description: 'Producto agotado',
             color: 'border-l-gray-500',
-            textColor: 'text-gray-600',
-            icon: XCircle
+            textColor: 'text-gray-500',
+            icon: XCircle,
+            description: 'Producto agotado - Reabastecer inmediatamente',
         };
-    }
-    
-    if (stock <= minStock * 0.5) {
+    } else if (stock < minStock * 0.5) {
         return {
             status: 'critico',
             label: 'Stock Crítico',
-            description: 'Reabastecimiento urgente',
             color: 'border-l-red-500',
-            textColor: 'text-red-600',
-            icon: AlertCircle
+            textColor: 'text-red-800',
+            icon: AlertTriangle,
+            description: 'Stock crítico - Reabastecer urgentemente',
         };
-    }
-    
-    if (stock <= minStock) {
+    } else if (stock < minStock) {
         return {
             status: 'bajo',
             label: 'Stock Bajo',
-            description: 'Considerar reabastecimiento',
             color: 'border-l-yellow-500',
-            textColor: 'text-yellow-600',
-            icon: AlertTriangle
+            textColor: 'text-yellow-800',
+            icon: AlertTriangle,
+            description: 'Stock por debajo del mínimo - Considerar reabastecimiento',
+        };
+    } else {
+        return {
+            status: 'normal',
+            label: 'Stock Normal',
+            color: 'border-l-green-500',
+            textColor: 'text-green-500',
+            icon: CheckCircle,
+            description: 'Stock en niveles normales',
         };
     }
-    
-    return {
-        status: 'normal',
-        label: 'Stock Normal',
-        description: 'Inventario en niveles óptimos',
-        color: 'border-l-green-500',
-        textColor: 'text-green-600',
-        icon: CheckCircle
-    };
 };
+
+/**
+ * Tipo para el resultado de getStockStatus
+ */
+export type StockStatus = ReturnType<typeof getStockStatus>;

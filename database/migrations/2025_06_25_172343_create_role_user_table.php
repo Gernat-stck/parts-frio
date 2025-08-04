@@ -12,22 +12,21 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('role_user', function (Blueprint $table) {
-            // Cambiamos la referencia al user_id como string
-            $table->string('user_id');
-            $table->string('role_slug');
+            $table->string('user_id');     // 🔄 Clave foránea tipo string
+            $table->string('role_slug');   // 🔄 Clave foránea tipo string
 
-            // Añadir nueva clave primaria
-            $table->primary(['user_id', 'role_slug']);
+            $table->primary(['user_id', 'role_slug']); // ✅ Clave compuesta
 
-            // Añadir clave foránea para role_slug
+            // 🔗 Relación con tabla roles
             $table->foreign('role_slug')
                 ->references('slug')
                 ->on('roles')
                 ->onDelete('cascade')
                 ->onUpdate('cascade');
-            // Establecemos la relación con la columna user_id de la tabla users
+
+            // 🔗 Relación con tabla users
             $table->foreign('user_id')
-                ->references('user_id')
+                ->references('user_id') // 🚨 IMPORTANTE: Debe existir como string en tabla users
                 ->on('users')
                 ->onDelete('cascade')
                 ->onUpdate('cascade');

@@ -23,9 +23,9 @@ return new class extends Migration
             $table->string('tipoModelo'); // Modelo del DTE (Factura Electrónica, Nota de Crédito, etc.)
             $table->string('horaEmi');
             $table->string('fechaEmi')->index();
-            $table->string('tipoMoneda')->default('USD');
+            $table->string('monto');
             $table->string('nitReceiver')->index(); // NIT del receptor del DTE
-
+            $table->string('sello_recibido')->unique()->nullable(); //Sello recibido de Hacienda
 
             $table->string('estado', 20)->default('EMITIDO'); // EMITIDO, ANULADO, INVALIDADO, etc.
 
@@ -47,8 +47,7 @@ return new class extends Migration
             ]);
             $table->foreign('nitReceiver')
                 ->references('nit')
-                ->on('receivers')
-                ->onDelete('cascade'); // Elimina las ventas si se elimina el receptor
+                ->on('receivers');
 
             $table->softDeletes(); // Añade la columna deleted_at para soft deletes
         });

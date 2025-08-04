@@ -15,10 +15,10 @@ return new class extends Migration
             $table->id();
 
             $table->string('nit')->unique();
-            $table->string('nrc');
+            $table->string('nrc')->nullable();
             $table->string('nombre');
-            $table->string('codActividad');
-            $table->string('descActividad');
+            $table->string('codActividad')->nullable();
+            $table->string('descActividad')->nullable();
             $table->string('nombreComercial')->nullable();
 
             // Dirección {}

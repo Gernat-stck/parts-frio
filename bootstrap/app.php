@@ -8,6 +8,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
+use Symfony\Component\HttpFoundation\Response;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -21,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'roles' =>   CheckAnyRole::class,
             'role' => CheckRole::class,
         ]);
+
         $middleware->web(append: [
             HandleAppearance::class,
             HandleInertiaRequests::class,
@@ -28,5 +30,18 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
-    })->create();
+        $exceptions->respond(function (Response $response) {
+            if ($response->getStatusCode() === 419) {
+                return redirect('login')->with([
+                    'error' => 'Sesion caducada, incia sesion de nuevo.',
+                ]);
+            }
+            if ($response->getStatusCode() === 302) {
+                return redirect('login')->with([
+                    'error' => 'Algo salio mal, incia sesion de nuevo.',
+                ]);
+            }
+            return $response;
+        });
+    })
+    ->create();

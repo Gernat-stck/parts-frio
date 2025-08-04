@@ -15,3 +15,21 @@ export interface Cliente extends Customer {
     montoTotal: number;
     historialCompras: Compra[];
 }
+
+export interface Receiver {
+    tipoDocumento?: string;
+    numDocumento?: string;
+    nombre: string;
+    nit?: string | null; // Añadido para CCF/NC
+    nrc?: string | null; // Añadido para CCF/NC
+    codActividad: string | null; // Añadido para CCF/NC
+    descActividad: string | null; // Añadido para CCF/NC
+    nombreComercial?: string | null; // Añadido para CCF/NC
+    direccion: {
+        departamento: string;
+        municipio: string;
+        complemento: string;
+    };
+    telefono: string;
+    correo: string;
+}

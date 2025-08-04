@@ -4,6 +4,7 @@ import { AppSidebar } from '@/components/app-sidebar';
 import { AppSidebarHeader } from '@/components/app-sidebar-header';
 import { NavItem, type BreadcrumbItem } from '@/types';
 import { type PropsWithChildren } from 'react';
+import { useFlashMessage } from '@/hooks/useFlashMessage';
 
 interface AppSidebarLayoutProps {
     children: React.ReactNode;
@@ -18,6 +19,7 @@ export default function AppSidebarLayout({
     mainNavItems = [],
     variant = 'inset',
 }: PropsWithChildren<AppSidebarLayoutProps>) {
+    useFlashMessage();
     return (
         <AppShell variant="sidebar">
             <AppSidebar mainNavItems={mainNavItems} variant={variant} />

@@ -5,21 +5,22 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 import { useEmployeeForm } from '@/hooks/useEmployeeForm';
 import { useEmployees } from '@/hooks/useEmployees';
-import { Employee } from '@/types/employee';
+import type { Employee } from '@/types/employee';
 import { Plus } from 'lucide-react';
-import { Auth } from '../../types';
+import type { Auth } from '../../types';
 import { ScrollArea } from '../ui/scroll-area';
 import { EmployeeFormDialog } from './EmployeeFormDialog';
 import { EmployeeTable } from './EmployeeTable';
-import UsersFilter from './users-filter';
+import { UsersFilter } from './users-filter';
 
 interface UserManagementProps {
     auth: Auth;
+    employee: Employee[];
 }
 
-export default function UserManagement({ auth }: UserManagementProps) {
+export default function UserManagement({ auth, employee }: UserManagementProps) {
     const isAdmin: boolean = auth.user.role === 'admin' || auth.user.role === 'super-admin';
-    const { employees, addEmployee, updateEmployee, deleteEmployee, getTotalEmployees, getActiveEmployeesCount } = useEmployees();
+    const { addEmployee, updateEmployee, deleteEmployee, getTotalEmployees, getActiveEmployeesCount } = useEmployees({ employee });
     const { formData, editingEmployee, isDialogOpen, openDialog, closeDialog, updateField } = useEmployeeForm();
 
     // Estados para el filtrado
@@ -28,13 +29,13 @@ export default function UserManagement({ auth }: UserManagementProps) {
 
     // Obtener departamentos únicos
     const departments = useMemo(() => {
-        const uniqueDepartments = [...new Set(employees.map((emp) => emp.department).filter(Boolean))];
+        const uniqueDepartments = [...new Set(employee.map((emp) => emp.department).filter(Boolean))];
         return uniqueDepartments.sort();
-    }, [employees]);
+    }, [employee]);
 
     // Filtrar empleados
     const filteredEmployees = useMemo(() => {
-        return employees.filter((employee) => {
+        return employee.filter((employee) => {
             // Filtro por término de búsqueda
             const matchesSearch =
                 searchTerm === '' ||
@@ -47,8 +48,7 @@ export default function UserManagement({ auth }: UserManagementProps) {
 
             return matchesSearch && matchesDepartment;
         });
-    }, [employees, searchTerm, selectedDepartments]);
-
+    }, [searchTerm, selectedDepartments, employee]);
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (editingEmployee) {
@@ -68,63 +68,69 @@ export default function UserManagement({ auth }: UserManagementProps) {
     };
 
     return (
-        <ScrollArea className="h-full w-full">
-            <div className="container mx-auto space-y-2 ">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-3xl font-bold">{isAdmin ? 'Administración de Empleados' : 'Directorio de Empleados'}</h1>
-                        <p className="mt-2 text-muted-foreground">
-                            {isAdmin
-                                ? 'Gestiona la información de todos los empleados de la empresa'
-                                : 'Consulta la información de contacto de tus compañeros de trabajo'}
-                        </p>
+        <div className="h-full w-full">
+            <ScrollArea className="h-full w-full">
+                <div className="container mx-auto p-2">
+                    {/* Header - Responsive */}
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="space-y-1">
+                            <h1 className="text-xl font-bold sm:text-2xl lg:text-3xl">
+                                {isAdmin ? 'Administración de Empleados' : 'Directorio de Empleados'}
+                            </h1>
+                            <p className="text-sm text-muted-foreground sm:text-base">
+                                {isAdmin
+                                    ? 'Gestiona la información de todos los empleados de la empresa'
+                                    : 'Consulta la información de contacto de tus compañeros de trabajo'}
+                            </p>
+                        </div>
+                        {isAdmin && (
+                            <Dialog
+                                open={isDialogOpen}
+                                onOpenChange={(open) => {
+                                    if (!open) {
+                                        closeDialog();
+                                    }
+                                }}
+                            >
+                                <DialogTrigger asChild>
+                                    <Button onClick={handleAddEmployee} className="w-full gap-2 sm:w-auto">
+                                        <Plus className="h-4 w-4" />
+                                        <span className="hidden sm:inline">Agregar Empleado</span>
+                                        <span className="sm:hidden">Agregar</span>
+                                    </Button>
+                                </DialogTrigger>
+                                <EmployeeFormDialog
+                                    isOpen={isDialogOpen}
+                                    onClose={closeDialog}
+                                    onSubmit={handleSubmit}
+                                    formData={formData}
+                                    updateField={updateField}
+                                    editingEmployee={editingEmployee}
+                                />
+                            </Dialog>
+                        )}
                     </div>
-                    {isAdmin && (
-                        <Dialog
-                            open={isDialogOpen}
-                            onOpenChange={(open) => {
-                                if (!open) {
-                                    closeDialog();
-                                }
-                            }}
-                        >
-                            <DialogTrigger asChild>
-                                <Button onClick={handleAddEmployee} className="gap-2">
-                                    <Plus className="h-4 w-4" />
-                                    Agregar Empleado
-                                </Button>
-                            </DialogTrigger>
-                            <EmployeeFormDialog
-                                isOpen={isDialogOpen}
-                                onClose={closeDialog}
-                                onSubmit={handleSubmit}
-                                formData={formData}
-                                updateField={updateField}
-                                editingEmployee={editingEmployee}
-                            />
-                        </Dialog>
-                    )}
+
+                    {/* Componente de filtro */}
+                    <UsersFilter
+                        departments={departments}
+                        selectedDepartments={selectedDepartments}
+                        setSelectedDepartments={setSelectedDepartments}
+                        searchTerm={searchTerm}
+                        setSearchTerm={setSearchTerm}
+                    />
+
+                    <EmployeeTable
+                        employees={filteredEmployees}
+                        totalEmployees={getTotalEmployees()}
+                        activeEmployeesCount={getActiveEmployeesCount()}
+                        onEdit={handleEditEmployee}
+                        onDelete={deleteEmployee}
+                        isAdmin={isAdmin}
+                        selectedDepartments={selectedDepartments}
+                    />
                 </div>
-
-                {/* Componente de filtro */}
-                <UsersFilter
-                    departments={departments}
-                    selectedDepartments={selectedDepartments}
-                    setSelectedDepartments={setSelectedDepartments}
-                    searchTerm={searchTerm}
-                    setSearchTerm={setSearchTerm}
-                />
-
-                <EmployeeTable
-                    employees={filteredEmployees}
-                    totalEmployees={getTotalEmployees()}
-                    activeEmployeesCount={getActiveEmployeesCount()}
-                    onEdit={handleEditEmployee}
-                    onDelete={deleteEmployee}
-                    isAdmin={isAdmin}
-                    selectedDepartments={selectedDepartments}
-                />
-            </div>
-        </ScrollArea>
+            </ScrollArea>
+        </div>
     );
 }
