@@ -2,39 +2,67 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import type { Factura } from '@/data/factura-types';
-import { AlertTriangle, Eye, MoreVertical, X } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
+import type { ContingenciaPayload, Factura } from '@/types/invoice';
+import { PaginationLinks, PaginationMeta } from '@/types/pagination';
+import { router, usePage } from '@inertiajs/react';
+import { AlertTriangle, Eye, FilePenLineIcon, MoreVertical, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { filtrarFacturas } from '../../hooks/use-invoice';
+import { buildContingencyPayload, convertToFormData } from '../../helpers/generadores';
+import { ServerPagination } from '../ServerPagination';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
-import { Pagination } from '../ui/pagination';
 import { DialogAnularFactura } from './anulation-dialog';
 import { DialogCertificarFacturas } from './certificate-dialog';
 import { DialogDetallesFactura } from './detail-dialog';
 import FilterAndSearch from './filter-search-component';
 
-export default function HistorialFacturas({ facturasRec }: { facturasRec: Factura[] }) {
-    const [facturas, setFacturas] = useState<Factura[]>(facturasRec || []);
-    const [busqueda, setBusqueda] = useState('');
-    const [filtroEstado, setFiltroEstado] = useState('todos');
+interface HistorialPageProps {
+    salesHistory: {
+        data: Factura[];
+        meta: PaginationMeta;
+        links: PaginationLinks;
+    };
+    filters: { busqueda?: string; estado?: string; month?: string; year?: string };
+}
+
+export default function HistorialFacturas() {
+    const { salesHistory, filters } = usePage().props as unknown as HistorialPageProps;
+    // Usar los datos del `salesHistory` del backend directamente
+    const facturas = salesHistory.data;
+    const pagination = salesHistory.meta;
+    const links = salesHistory.links;
+    // Inicializar los estados con los filtros recibidos del backend
+    const [busqueda, setBusqueda] = useState(filters?.busqueda || '');
+    const [filtroEstado, setFiltroEstado] = useState(filters?.estado || 'todos');
+    const [mes, setMes] = useState(String(filters?.month) || String(new Date().getMonth() + 1));
+    const [anio, setAnio] = useState(String(filters?.year) || String(new Date().getFullYear()));
+
     const [facturaSeleccionada, setFacturaSeleccionada] = useState<Factura | null>(null);
     const [mostrarDetalles, setMostrarDetalles] = useState(false);
     const [mostrarAnular, setMostrarAnular] = useState(false);
     const [mostrarCertificar, setMostrarCertificar] = useState(false);
     const [contraseñaAdmin, setContraseñaAdmin] = useState('');
-    const [facturasSeleccionadas, setFacturasSeleccionadas] = useState<number[]>([]);
-    const [currentPage, setCurrentPage] = useState(1);
-    const [facturasPaginadas, setFacturasPaginadas] = useState<Factura[]>([]);
+    const [facturasSeleccionadas, setFacturasSeleccionadas] = useState<string[]>([]);
 
-    const handlePaginatedData = useCallback((data: Factura[]) => {
-        setFacturasPaginadas(data);
-    }, []);
+    const facturasContingencia = facturas?.filter((f) => f.estado === 'rechazada');
 
-    // Filtrar facturas
-    const facturasFiltradas = useMemo(() => filtrarFacturas(facturas, busqueda, filtroEstado), [facturas, busqueda, filtroEstado]);
+    const handlePageChange = (page: number) => {
+        router.get(
+            route('admin.sales.history'),
+            {
+                ...filters,
+                page,
+            },
+            { preserveState: true, preserveScroll: true },
+        );
+    };
 
-    const facturasContingencia = facturas.filter((f) => f.estado === 'rechazada');
+    const handleClearFilters = () => {
+        setBusqueda('');
+        setFiltroEstado('todos');
+        setMes(String(new Date().getMonth() + 1));
+        setAnio(String(new Date().getFullYear()));
+    };
 
     const handleVerDetalles = (factura: Factura) => {
         setFacturaSeleccionada(factura);
@@ -47,11 +75,24 @@ export default function HistorialFacturas({ facturasRec }: { facturasRec: Factur
     };
 
     const confirmarAnulacion = () => {
+        // En un escenario real, aquí se haría una solicitud al backend
+        // para anular la factura.
         if (contraseñaAdmin === 'admin123' && facturaSeleccionada) {
-            setFacturas((prev) => prev.map((f) => (f.id === facturaSeleccionada.id ? { ...f, estado: 'anulada' } : f)));
-            setMostrarAnular(false);
-            setContraseñaAdmin('');
-            setFacturaSeleccionada(null);
+            router.post(
+                route('admin.sales.anular'), // Asegúrate de tener una ruta para esto
+                { id: facturaSeleccionada.id },
+                {
+                    onSuccess: () => {
+                        toast.success('Factura anulada con éxito');
+                        setMostrarAnular(false);
+                        setContraseñaAdmin('');
+                        setFacturaSeleccionada(null);
+                    },
+                    onError: (errors) => {
+                        toast.error(errors.password || 'Contraseña incorrecta');
+                    },
+                },
+            );
         } else {
             toast.error('Contraseña incorrecta', {
                 duration: 3000,
@@ -60,26 +101,65 @@ export default function HistorialFacturas({ facturasRec }: { facturasRec: Factur
         }
     };
 
-    const handleSeleccionarFactura = (facturaId: number, seleccionada: boolean) => {
+    const handleSeleccionarFactura = (facturaNc: string, seleccionada: boolean) => {
         if (seleccionada) {
-            setFacturasSeleccionadas((prev) => [...prev, facturaId]);
+            setFacturasSeleccionadas((prev) => [...prev, facturaNc]);
         } else {
-            setFacturasSeleccionadas((prev) => prev.filter((id) => id !== facturaId));
+            setFacturasSeleccionadas((prev) => prev.filter((id) => id !== facturaNc));
         }
     };
 
-    const certificarFacturasSeleccionadas = () => {
-        setFacturas((prev) =>
-            prev.map((f) =>
-                facturasSeleccionadas.includes(f.id)
-                    ? { ...f, estado: 'aceptado', codigoGeneracion: `DTE-001-2024-${String(f.id).padStart(6, '0')}` }
-                    : f,
-            ),
-        );
-        setFacturasSeleccionadas([]);
-        setMostrarCertificar(false);
-    };
+    const certificarFacturasSeleccionadas = (data: ContingenciaPayload) => {
+        // En un escenario real, aquí se haría una solicitud al backend
+        // para certificar las facturas.
+        if (data.selectedFacturas.length === 0) {
+            toast.error('Debe seleccionar al menos una factura para certificar');
+            return;
+        }
+        const dataPayload = buildContingencyPayload(data);
+        const formData = convertToFormData(dataPayload);
 
+        router.post(route('admin.sales.certify'), formData, {
+            onSuccess: () => {
+                setFacturasSeleccionadas([]);
+                setMostrarCertificar(false);
+            },
+        });
+    };
+    const createNotaCredito = (CodigoGeneracion: string | null, tipoDocumento: string) => {
+        if (!CodigoGeneracion) {
+            toast.error('La factura no tiene un código de generación válido para crear una nota de crédito.');
+            return;
+        }
+        if(tipoDocumento !== '03'){
+            toast.error('Nota de credito solo valido para documentos Credito Fiscal (03) y Comprobante de retencion (07)');
+            return
+        }
+        router.get(route('admin.sales.show.credit.note', { codigoGeneracion: CodigoGeneracion }));
+    };
+    
+    useEffect(() => {
+        // Debounce para evitar múltiples solicitudes mientras se escribe
+        const timeout = setTimeout(() => {
+            router.get(
+                route('admin.sales.history'),
+                {
+                    busqueda,
+                    estado: filtroEstado,
+                    month: mes,
+                    year: anio,
+                },
+                {
+                    // Mantener el estado de la página actual, pero actualizar la URL
+                    preserveState: true,
+                    preserveScroll: true,
+                    replace: true, // Reemplazar la entrada en el historial del navegador
+                },
+            );
+        }, 400);
+
+        return () => clearTimeout(timeout);
+    }, [busqueda, filtroEstado, mes, anio]);
     return (
         <div className="container mx-auto space-y-4 p-2 sm:p-4 lg:p-6">
             {/* Header Section - Responsive */}
@@ -99,14 +179,23 @@ export default function HistorialFacturas({ facturasRec }: { facturasRec: Factur
             </div>
 
             {/* Filtros y búsqueda */}
-            <FilterAndSearch busqueda={busqueda} setBusqueda={setBusqueda} filtroEstado={filtroEstado} setFiltroEstado={setFiltroEstado} />
-
+            <FilterAndSearch
+                busqueda={busqueda}
+                setBusqueda={setBusqueda}
+                filtroEstado={filtroEstado}
+                setFiltroEstado={setFiltroEstado}
+                mes={mes}
+                setMes={setMes}
+                anio={anio}
+                setAnio={setAnio}
+                onClearFilters={handleClearFilters}
+            />
             {/* Desktop Table View */}
             <div className="hidden lg:block">
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center justify-between">
-                            <span>Facturas ({facturasFiltradas.length})</span>
+                            <span>Facturas ({facturas.length})</span>
                             <Badge variant="secondary" className="text-xs">
                                 Actualizado
                             </Badge>
@@ -116,7 +205,8 @@ export default function HistorialFacturas({ facturasRec }: { facturasRec: Factur
                         <Table>
                             <TableHeader className="bg-muted/40">
                                 <TableRow>
-                                    <TableHead className="text-xs font-semibold whitespace-nowrap text-muted-foreground">Fecha</TableHead>
+                                    <TableHead className="text-xs font-semibold whitespace-nowrap text-muted-foreground">Tipo DTE</TableHead>
+                                    <TableHead className="text-xs font-semibold">Fecha</TableHead>
                                     <TableHead className="text-xs font-semibold">Código</TableHead>
                                     <TableHead className="text-xs font-semibold">Receptor</TableHead>
                                     <TableHead className="text-xs font-semibold">Documento</TableHead>
@@ -126,9 +216,10 @@ export default function HistorialFacturas({ facturasRec }: { facturasRec: Factur
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {facturasPaginadas.length > 0 ? (
-                                    facturasPaginadas.map((factura) => (
+                                {facturas.length > 0 ? (
+                                    facturas.map((factura) => (
                                         <TableRow key={factura.id} className="transition-colors hover:bg-muted/30">
+                                            <TableCell className="text-sm text-center">{factura.tipoDTE}</TableCell>
                                             <TableCell className="text-sm">{factura.fechaGeneracion}</TableCell>
                                             <TableCell>
                                                 {factura.codigoGeneracion ? (
@@ -171,6 +262,12 @@ export default function HistorialFacturas({ facturasRec }: { facturasRec: Factur
                                                             <Eye className="mr-2 h-4 w-4 text-muted-foreground" />
                                                             Ver detalles
                                                         </DropdownMenuItem>
+                                                        <DropdownMenuItem
+                                                            onClick={() => createNotaCredito(factura.codigoGeneracion, factura.tipoDTE)}
+                                                        >
+                                                            <FilePenLineIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+                                                            Nota de crédito
+                                                        </DropdownMenuItem>
                                                         {factura.estado !== 'anulada' && (
                                                             <DropdownMenuItem onClick={() => handleAnularFactura(factura)}>
                                                                 <X className="mr-2 h-4 w-4 text-destructive" />
@@ -198,15 +295,15 @@ export default function HistorialFacturas({ facturasRec }: { facturasRec: Factur
             {/* Mobile/Tablet Card View */}
             <div className="lg:hidden">
                 <div className="mb-4 flex items-center justify-between">
-                    <h2 className="text-lg font-semibold">Facturas ({facturasFiltradas.length})</h2>
+                    <h2 className="text-lg font-semibold">Facturas ({facturas.length})</h2>
                     <Badge variant="secondary" className="text-xs">
                         Actualizado
                     </Badge>
                 </div>
 
-                {facturasPaginadas.length > 0 ? (
+                {facturas.length > 0 ? (
                     <div className="space-y-3">
-                        {facturasPaginadas.map((factura) => (
+                        {facturas.map((factura) => (
                             <Card key={factura.id} className="transition-colors hover:bg-muted/30">
                                 <CardContent className="p-4">
                                     <div className="space-y-3">
@@ -292,16 +389,12 @@ export default function HistorialFacturas({ facturasRec }: { facturasRec: Factur
 
             {/* Responsive Pagination */}
             <div className="flex justify-center">
-                <Pagination
-                    data={facturasFiltradas}
-                    itemsPerPage={5}
-                    currentPage={currentPage}
-                    onPageChange={setCurrentPage}
-                    onPaginatedData={handlePaginatedData}
-                    pageInfo={{
-                        itemName: 'facturas',
-                    }}
-                    maxPageButtons={3} // Reduced for mobile
+                <ServerPagination
+                    meta={pagination}
+                    links={links}
+                    onPageChange={handlePageChange}
+                    pageInfo={{ itemName: 'facturas' }}
+                    maxPageButtons={5}
                 />
             </div>
 

@@ -29,6 +29,6 @@ export interface ProductData {
     uniMedida?: number; // Optional field for unit of measure
     ventaExenta?: number; // Optional field for exempt sales
     ventaGravada?: number; // Optional field for taxed sales
-    tributos?: Record<string, unknown>; // Optional field for taxes
+    tributos?: Record<string, unknown> | Array<unknown> | null; // Optional field for taxes
     montoDescu?: number; // Optional field for discount amount
 }

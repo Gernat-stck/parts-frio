@@ -2,12 +2,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { convertToFormData, generateInvoiceData } from '@/helpers/generadores';
+import { getPaymentLabel } from '@/helpers/get-labels';
 import type { Receiver } from '@/types/clientes';
 import type { CartItem, InvoicePayload, Payment } from '@/types/invoice';
 import { router } from '@inertiajs/react';
 import { Award, Download, Mail, PrinterIcon as Print } from 'lucide-react';
 import { toast } from 'sonner';
-import { buildResumen } from '../../hooks/use-invoice';
 
 interface InvoiceStepProps {
     cartItems: CartItem[];
@@ -16,173 +17,10 @@ interface InvoiceStepProps {
     onPrev: () => void;
 }
 
-function convertToFormData<T extends Record<string, unknown>>(obj: T, form: FormData = new FormData(), namespace = ''): FormData {
-    for (const key in obj) {
-        if (!Object.prototype.hasOwnProperty.call(obj, key)) continue;
-
-        const value = obj[key];
-        const formKey = namespace ? `${namespace}[${key}]` : key;
-
-        if (value === null) {
-            form.append(formKey, 'null');
-        } else if (Array.isArray(value)) {
-            value.forEach((item, index) => {
-                const nestedKey = `${formKey}[${index}]`;
-                if (typeof item === 'object' && item !== null) {
-                    convertToFormData(item as Record<string, unknown>, form, nestedKey);
-                } else if (item === null) {
-                    form.append(nestedKey, 'null');
-                } else {
-                    form.append(nestedKey, value instanceof Blob ? value : `${item}`);
-                }
-            });
-        } else if (typeof value === 'object' && !(value instanceof File)) {
-            convertToFormData(value as Record<string, unknown>, form, formKey);
-        } else {
-            form.append(formKey, value instanceof Blob ? value : `${value}`);
-        }
-    }
-
-    return form;
-}
-
 export default function InvoiceStep({ cartItems, customerData, paymentData, onPrev }: InvoiceStepProps) {
     const dteType = localStorage.getItem('typeDte') || '01';
 
-    const generateInvoiceData = () => {
-        const subtotal = cartItems.reduce((total, item) => {
-            return total + (item.quantity * item.price - (item.montoDescu || 0));
-        }, 0);
-
-        const iva = subtotal * 0.13;
-        const total = subtotal;
-
-        const now = new Date();
-        const generarSegmento = (longitud: number) =>
-            [...Array(longitud)]
-                .map(() =>
-                    Math.floor(Math.random() * 16)
-                        .toString(16)
-                        .toUpperCase(),
-                )
-                .join('');
-
-        const codigoGeneracion = `${generarSegmento(8)}-${generarSegmento(4)}-${generarSegmento(4)}-${generarSegmento(4)}-${generarSegmento(12)}`;
-        const generarSegmentoAlfanumerico = (longitud: number) =>
-            [...Array(longitud)]
-                .map(() =>
-                    Math.floor(Math.random() * 36)
-                        .toString(36)
-                        .toUpperCase(),
-                )
-                .join('');
-
-        const numeroControl = `DTE-${dteType}-${generarSegmentoAlfanumerico(8)}-${now.getFullYear()}${String(Math.floor(Math.random() * 1e11)).padStart(11, '0')}`;
-        return {
-            identificacion: {
-                version: dteType === '01' ? 1 : dteType === '03' ? 3 : 5,
-                ambiente: '01',
-                tipoDte: dteType,
-                numeroControl,
-                codigoGeneracion,
-                tipoModelo: 1,
-                tipoOperacion: 1,
-                tipoContingencia: null,
-                motivoContin: null,
-                fecEmi: now.toISOString().split('T')[0],
-                horEmi: now.toTimeString().split(' ')[0],
-                tipoMoneda: 'USD',
-            },
-            emisor: {
-                codPuntoVentaMH: 'P002',
-                codPuntoVenta: 'P002',
-                codEstableMH: 'S026',
-                codEstable: 'S026',
-                nombreComercial: 'Farmacia San Nicolas S.A. de C.V.',
-                tipoEstablecimiento: '01',
-                nit: '06142212650014',
-                nrc: '4065',
-                nombre: 'Farmacia San Nicolas S.A. de C.V.',
-                codActividad: '46491',
-                descActividad: 'Venta de productos farmacéuticos y medicinales',
-                direccion: {
-                    departamento: '05',
-                    municipio: '01',
-                    complemento: 'Blvd. Final Orden de Malta',
-                },
-                telefono: '22785417',
-                correo: 'santaelena@sannicolas.com.sv',
-            },
-            receptor: { ...customerData },
-            cuerpoDocumento: cartItems.map((item, index) => {
-                const ventaGravada = Number((item.quantity * item.price - (item.montoDescu || 0)).toFixed(2));
-                const ivaItem = Number((ventaGravada * 0.13).toFixed(2));
-                const tributos = ['20'];
-
-                const baseItem = {
-                    numItem: index + 1,
-                    tipoItem: 1,
-                    codigo: item.product_code,
-                    descripcion: item.description,
-                    cantidad: Number(item.quantity),
-                    uniMedida: 99,
-                    precioUni: Number(item.price.toFixed(2)),
-                    montoDescu: Number(item.montoDescu?.toFixed(2)),
-                    ventaNoSuj: 0.0,
-                    ventaExenta: 0.0,
-                    ventaGravada,
-                    psv: 0.0,
-                    noGravado: 0.0,
-                    tributos,
-                    numeroDocumento: null,
-                    codTributo: null,
-                };
-
-                if (dteType !== '03' && dteType !== '05') {
-                    return {
-                        ...baseItem,
-                        ivaItem,
-                        tributos: null
-                    };
-                }
-
-                return baseItem; // para documentos fiscales: sin ivaItem
-            }),
-
-            resumen: buildResumen({
-                documentType : dteType as "01" | "03" | "05",
-                subtotal,
-                total,
-                iva,
-                cartItems,
-                convertirNumeroALetras,
-                paymentData,
-            }),
-            documentoRelacionado: null,
-            otrosDocumentos: null,
-            ventaTercero: null,
-            extension: null,
-            apendice: null,
-        };
-    };
-
-    const convertirNumeroALetras = (numero: number): string => {
-        const entero = Math.floor(numero);
-        const decimal = Math.round((numero - entero) * 100);
-        return `${entero} CON ${decimal}/100 DOLARES`;
-    };
-
-    const invoiceData: InvoicePayload = generateInvoiceData();
-
-    const formasPago: { [key: string]: string } = {
-        '01': 'EFECTIVO',
-        '02': 'TARJETA DE CREDITO',
-        '03': 'TARJETA DE DEBITO',
-        '04': 'CHEQUE',
-        '05': 'TRANSFERENCIA BANCARIA',
-        '06': 'DEPOSITO BANCARIO',
-        '99': 'OTROS',
-    };
+    const invoiceData: InvoicePayload = generateInvoiceData({ cartItems, customerData, paymentData, dteType });
 
     const onCertificate = () => {
         if (!dteType) {
@@ -396,7 +234,7 @@ export default function InvoiceStep({ cartItems, customerData, paymentData, onPr
                                     <Separator />
                                     <div className="flex justify-between text-base font-bold sm:text-lg">
                                         <span>Total a Pagar:</span>
-                                        <span>${invoiceData.resumen.totalPagar.toFixed(2) || '0.00'}</span>
+                                        <span>${invoiceData.resumen.totalPagar?.toFixed(2) || '0.00'}</span>
                                     </div>
                                     <div className="text-xs break-words text-gray-600">{invoiceData.resumen.totalLetras}</div>
                                 </div>
@@ -409,7 +247,7 @@ export default function InvoiceStep({ cartItems, customerData, paymentData, onPr
                                     <div className="flex items-center justify-between">
                                         <div className="min-w-0 flex-1 pr-2">
                                             <div className="text-sm font-medium break-words sm:text-base">
-                                                {formasPago[paymentData.pagos[0].codigo]}
+                                                {getPaymentLabel(paymentData.pagos[0].codigo)}
                                             </div>
                                             {paymentData.pagos[0].referencia && (
                                                 <div className="text-xs break-all text-gray-600 sm:text-sm">

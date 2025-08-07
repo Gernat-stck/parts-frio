@@ -4,11 +4,60 @@ namespace App\Services;
 
 use App\Models\Receiver;
 use App\Models\SalesHistory;
-use Illuminate\Support\Facades\Log;  // Importar Log
-use Throwable; // Importar Throwable
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class SaleService
 {
+    /**
+     * Bring invoices for a specific month
+     * @param string $month
+     * @return LengthAwarePaginator
+     */
+    public function obtenerFacturasPorMes(Request $request): LengthAwarePaginator
+    {
+
+        $month = $request->input('month', Carbon::now()->month);
+        $year = $request->input('year', Carbon::now()->year);
+        $perPage = $request->input('perPage', 5);
+        $estado = $request->input('estado');
+        $busqueda = $request->input('busqueda');
+
+        $request->validate([
+            'month' => 'nullable|integer|min:1|max:12',
+            'year' => 'nullable|integer|min:2000|max:' . Carbon::now()->year,
+            'perPage' => 'nullable|integer|min:1|max:100',
+            'estado' => 'nullable|string|in:certificada,contingencia,anulada,todos',
+            'busqueda' => 'nullable|string|max:255',
+        ]);
+
+        $query = SalesHistory::query()
+            ->whereMonth('created_at', $month)
+            ->whereYear('created_at', $year);
+
+        if ($estado && $estado !== 'todos') {
+            $query->where('estado', $estado);
+        }
+
+        if ($busqueda) {
+            $query->where(function ($q) use ($busqueda) {
+                $q->whereRaw("json_enviado->'receptor'->>'nombre' ILIKE ?", ["%$busqueda%"])
+                    ->orWhere('nitReceiver', 'ILIKE', "%$busqueda%")
+                    ->orWhere('numeroControl', 'ILIKE', "%$busqueda%")
+                    ->orWhere('codigoGeneracion', 'ILIKE', "%$busqueda%");
+            });
+        }
+
+
+        return $query
+            ->orderBy('created_at', 'desc')
+            ->paginate($perPage)
+            ->withQueryString();
+    }
+
     /**
      * Retrieves a client with their latest sales history.
      *
@@ -71,15 +120,34 @@ class SaleService
     /**
      * Retrieves all clients with their total sales and a brief sales history.
      *
-     * @return array<int, array> A list of clients with aggregated sales data.
+     * @return LengthAwarePaginator A list of clients with aggregated sales data.
      */
-    public function obtenerTodosLosClientes(): array
+
+    public function obtenerClientesPaginados(Request $request): LengthAwarePaginator
     {
         try {
-            $clientes = Receiver::all(); // Obtener todos los receptores
+            $perPage = $request->input('perPage', 5);
+            $busqueda = $request->input('busqueda');
 
-            return $clientes->map(function ($receiver) {
-                // Compras totales para estadísticas generales
+            $request->validate([
+                'perPage' => 'nullable|integer|min:1|max:100',
+                'busqueda' => 'nullable|string|max:255',
+            ]);
+
+            $query = Receiver::query();
+
+            if ($busqueda) {
+                $query->where(function ($q) use ($busqueda) {
+                    $q->where('nombre', 'ILIKE', "%$busqueda%")
+                        ->orWhere('correo', 'ILIKE', "%$busqueda%")
+                        ->orWhere('nit', 'ILIKE', "%$busqueda%")
+                        ->orWhere('nrc', 'ILIKE', "%$busqueda%");
+                });
+            }
+
+            $paginados = $query->orderBy('created_at', 'desc')->paginate($perPage)->withQueryString();
+
+            $clientesTransformados = $paginados->getCollection()->map(function ($receiver) {
                 $comprasTotales = SalesHistory::where('nitReceiver', $receiver->nit)->get();
 
                 $totalCompras = $comprasTotales->count();
@@ -89,7 +157,6 @@ class SaleService
                         ->sum(fn($item) => floatval($item['ventaGravada'] ?? 0));
                 });
 
-                // Últimas 5 compras para historial breve
                 $ultimasCompras = $comprasTotales->sortByDesc('fechaEmi')->take(5);
 
                 $historialCompras = $ultimasCompras->map(function ($venta) {
@@ -119,16 +186,36 @@ class SaleService
                     'email' => $receiver->correo,
                     'phone' => $receiver->telefono,
                     'document' => $receiver->nit ?? $receiver->nrc,
-                    'address' => trim(($receiver->municipio ?? '') . ' ' . ($receiver->departamento ?? '')), // Asegurar que no haya doble espacio si uno es nulo
+                    'address' => trim(($receiver->municipio ?? '') . ' ' . ($receiver->departamento ?? '')),
                     'fechaRegistro' => $receiver->created_at->format('Y-m-d'),
                     'totalCompras' => $totalCompras,
                     'montoTotal' => $montoTotal,
                     'historialCompras' => $historialCompras
                 ];
-            })->toArray();
+            });
+
+            $paginados->setCollection($clientesTransformados);
+
+            return $paginados;
         } catch (Throwable $e) {
-            Log::error("Error al obtener todos los clientes con historial de compras: " . $e->getMessage());
-            return []; // Devolver un array vacío en caso de error
+            Log::error("Error al obtener clientes paginados: " . $e->getMessage());
+            return new LengthAwarePaginator([], 0, $perPage);
         }
+    }
+
+    /**
+     * Get invoice details by its generation code.
+     * @param string $codigoGeneracion
+     * @return array|null
+     */
+    public function findInvoiceByCodigoGeneracion(string $codigoGeneracion): array|null
+    {
+        $invoice = SalesHistory::where('codigoGeneracion', $codigoGeneracion)->first();
+
+        if (!$invoice) {
+            return null;
+        }
+
+        return $invoice->json_enviado;
     }
 }

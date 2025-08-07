@@ -1,6 +1,6 @@
 import { Calendar, IdCard, Mail, MapPin, Phone, ShoppingBag, User } from 'lucide-react';
-import { formatUbicacion } from '../../helpers/get-direction';
-import type { Cliente } from '../../types/clientes';
+import { formatUbicacion } from '../../helpers/get-labels';
+import type { ClienteRecord as Cliente } from '../../types/clientes';
 import { Badge } from '../ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';

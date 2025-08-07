@@ -8,7 +8,7 @@ export interface Compra {
 }
 
 // Cliente extiende Customer y agrega campos específicos de tu app
-export interface Cliente extends Customer {
+export interface ClienteRecord extends Customer {
     id: number;
     fechaRegistro: string;
     totalCompras: number;

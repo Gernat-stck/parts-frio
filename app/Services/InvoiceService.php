@@ -44,6 +44,14 @@ class InvoiceService
             case '05':
                 $schemaUrl = 'app/private/schemas/fe-nc-v1.json';
                 break;
+
+            case 'contingencia':
+                $schemaUrl = 'app/private/schemas/contingencia-schema-v3.json';
+                break;
+
+            case 'anulacion':
+                $schemaUrl = 'app/private/schemas/anulacion-schema-v2.json';
+                break;
         }
         return $schemaUrl;
     }
@@ -116,13 +124,18 @@ class InvoiceService
      * Valida un payload JSON contra un esquema JSON usando Opis.
      *
      * @param array $payload Los datos a validar.
+     * @param bool $isContingencia Indica si es un DTE de contingencia.
      * @return array Un array con el estado de la validación ('aceptado' o 'error') y detalles.
      */
-    public function validateWithOpis(array $payload): array
+    public function validateWithOpis(array $payload, bool $isContingencia = false): array
     {
         try {
             // Determinar la ruta del esquema dinámicamente o por un valor fijo como se ha definido
-            $tipoDte = $payload['identificacion']['tipoDte'] ?? '01'; // Default a 'fc' si no está definido
+            if ($isContingencia) {
+                $tipoDte = 'contingencia';
+            } else {
+                $tipoDte = $payload['identificacion']['tipoDte'] ?? '01'; // Default a 'fc' si no está definido
+            }
             $schemaPath = storage_path($this->getSchemaUrl($tipoDte));
 
             if (!file_exists($schemaPath)) {
@@ -182,9 +195,10 @@ class InvoiceService
      * En un entorno real, aquí se realizaría una llamada HTTP externa.
      *
      * @param array $payload Los datos del DTE a enviar a Hacienda.
+     * @param bool $isContingencia Indica si es un DTE de contingencia.
      * @return array Un array con la respuesta simulada de Hacienda.
      */
-    public function sendToHaciendaApi(array $payload): array
+    public function sendToHaciendaApi(array $payload, bool $isContingencia = false): array
     {
         // En un entorno de producción, aquí integrarías con la API de Hacienda (ej. Guzzle HTTP client).
         // Por ahora, reutilizamos la lógica de validación como simulación de la respuesta de Hacienda.
@@ -192,8 +206,11 @@ class InvoiceService
         Log::info("Simulando envío a Hacienda para código de generación: " . ($payload['identificacion']['codigoGeneracion'] ?? 'N/A'));
 
         // Realizar la validación del esquema como parte de la simulación de Hacienda
-        $validationResult = $this->validateWithOpis($payload);
-
+        if ($isContingencia) {
+            $validationResult = $this->validateWithOpis($payload, true);
+        } else {
+            $validationResult = $this->validateWithOpis($payload);
+        }
         if ($validationResult['estado'] === 'aceptado') {
             // Simula una respuesta exitosa de Hacienda
             return [

@@ -4,8 +4,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { PAYMENTS_METHODS as formasPago } from '@/constants/salesConstants';
 import type { CartItem, Payment } from '@/types/invoice';
-
 interface PaymentStepProps {
     data: Payment;
     setData: (data: Payment) => void;
@@ -13,16 +13,6 @@ interface PaymentStepProps {
     onNext: () => void;
     onPrev: () => void;
 }
-
-const formasPago = [
-    { value: '01', label: 'Billetes y monedas' },
-    { value: '02', label: 'Tarjeta de crédito' },
-    { value: '03', label: 'Tarjeta de débito' },
-    { value: '04', label: 'Cheque' },
-    { value: '05', label: 'Transferencia bancaria' },
-    { value: '06', label: 'Depósito bancario' },
-    { value: '99', label: 'Otros' },
-];
 
 export default function PaymentStep({ data, setData, cartItems, onNext, onPrev }: PaymentStepProps) {
     const calculateTotal = () => {

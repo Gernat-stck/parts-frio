@@ -5,13 +5,27 @@ interface options {
     value: string;
     label: string;
 }
+export const PAYMENTS_METHODS: options[] = [
+    { value: '01', label: 'Billetes y Monedas' },
+    { value: '02', label: 'Tarjeta Débito' },
+    { value: '03', label: 'Tarjeta Crédito' },
+    { value: '04', label: 'Cheque' },
+    { value: '05', label: 'Transferencia / Depósito Bancario' },
+    { value: '08', label: 'Dinero Electrónico' },
+    { value: '09', label: 'Monedero Electrónico' },
+    { value: '11', label: 'Bitcoin' },
+    { value: '12', label: 'Otras Criptomonedas' },
+    { value: '13', label: 'Cuentas por pagar del receptor' },
+    { value: '14', label: 'Giro Bancario' },
+    { value: '99', label: 'Otros' },
+];
 export const INITIALIZER_RECEIVER: Receiver = {
     tipoDocumento: '',
     numDocumento: '',
     nombre: '',
     nit: '',
     nrc: '',
-    codActividad: '', 
+    codActividad: '',
     descActividad: '',
     nombreComercial: '',
     direccion: {

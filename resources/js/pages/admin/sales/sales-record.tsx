@@ -3,7 +3,6 @@ import AppLayout from '@/layouts/app-layout';
 import { adminNavItems } from '@/lib/nav-items';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
-import { Cliente } from '../../../types/clientes';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -11,13 +10,12 @@ const breadcrumbs: BreadcrumbItem[] = [
         href: route('admin.sales.record'),
     },
 ];
-
-export default function SalesRecord({ clientRecord }: { clientRecord: { data: Cliente[] } }) {
+export default function SalesRecord() {
     return (
         <AppLayout breadcrumbs={breadcrumbs} mainNavItems={adminNavItems}>
             <Head title="Historial de ventas por clientes" />
             <main className="container mx-auto h-[calc(100vh-5rem)] p-5">
-                <GestionClientes clientRecord={clientRecord.data} />
+                <GestionClientes />
             </main>
         </AppLayout>
     );

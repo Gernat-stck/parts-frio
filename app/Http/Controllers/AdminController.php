@@ -11,17 +11,17 @@ use App\Http\Resources\ClienteRecordResource;
 use App\Http\Resources\EmployeeResource;
 use App\Http\Resources\ProductResource;
 use App\Http\Resources\SalesHistoryResource;
-use App\Models\SalesHistory;
-use App\Models\User; 
+use App\Models\User;
 use App\Services\InventoryService;
 use App\Services\InvoiceService;
 use App\Services\SaleService;
 use App\Services\Support\SchemaAwareNormalizer;
 use App\Services\UserService;
+use Carbon\Carbon;
 use Illuminate\Http\Request as HttpRequest;
 use Inertia\Inertia;
-use Illuminate\Support\Facades\Log; 
-use Throwable; 
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class AdminController extends Controller
 {
@@ -423,23 +423,123 @@ class AdminController extends Controller
 
     /**
      * Display the sales history page.
-     *
-     * @return \Inertia\Response
+     * @param HttpRequest $request The HTTP request containing filters.
+     * @return \Inertia\Response | \Illuminate\Http\RedirectResponse
      */
-    public function salesHistory(): \Inertia\Response
+    public function salesHistory(HttpRequest $request): \Inertia\Response | \Illuminate\Http\RedirectResponse
     {
         try {
-            $historial = SalesHistory::all(); // Considerar paginación para grandes volúmenes de datos
+            $request->mergeIfMissing([
+                'month' => Carbon::now()->month,
+                'year' => Carbon::now()->year,
+                'perPage' => 5,
+            ]);
+            $historial = $this->saleService->obtenerFacturasPorMes($request);
             $salesHistory = SalesHistoryResource::collection($historial);
             return Inertia::render('admin/sales/sales-history', [
-                'salesHistory' => $salesHistory
+                'salesHistory' => $salesHistory,
+                'filters' => $request->only(['month', 'year', 'estado', 'busqueda', 'perPage']),
+                'pagination' => $historial->toArray(), // opcional
             ]);
         } catch (Throwable $e) {
             Log::error("Error al cargar el historial de ventas: " . $e->getMessage());
-            return Inertia::render('admin/sales/sales-history', [
-                'salesHistory' => [],
-                'error' => 'No se pudo cargar el historial de ventas en este momento.'
-            ])->with('error', 'Error al cargar el historial de ventas.');
+            return redirect()->back()->with('error', 'Error al cargar el historial de ventas.');
+        }
+    }
+
+    /**
+     * Create Contingency Event.
+     * @param HttpRequest $request The HTTP request containing the event data.
+     * @return \Inertia\Response | \Illuminate\Http\RedirectResponse
+     */
+    public function createContingecyEvent(HttpRequest $request): \Inertia\Response | \Illuminate\Http\RedirectResponse
+    {
+        try {
+            // Validar si es credito fiscal, factura, nota de credito y obtener la URL del esquema
+            $schemaUrl = $this->invoiceService->getSchemaUrl('contingencia');
+            // Normalizar valores tipo string 'null', 'true', 'false'
+            $rawInput = $request->all();
+            // Leer y aplicar normalizador basado en el esquema JSON
+            $schemaPath = storage_path($schemaUrl);
+            if (!file_exists($schemaPath)) {
+                Log::error("Esquema no encontrado para contingencia en {$schemaPath}");
+                return redirect()->back()->with('error', 'Error de configuración: Esquema DTE no encontrado.');
+            }
+            $schema = json_decode(file_get_contents($schemaPath));
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                Log::error("Error al decodificar esquema JSON para contingencia: " . json_last_error_msg());
+                return redirect()->back()->with('error', 'Error de configuración: Esquema DTE inválido.');
+            }
+
+            $normalizer = new SchemaAwareNormalizer();
+            $normalized = $normalizer->normalize($rawInput, $schema);
+            Log::info('Payload de contingencia normalizado:', $normalized);
+            // Validar estructura con Opis  
+            $schemaResult = $this->invoiceService->validateWithOpis($normalized, true);
+
+            if ($schemaResult['estado'] === 'error') {
+                Log::warning('❌ Validación Opis fallida:', ['errores' => $schemaResult['errores'], 'payload' => $normalized]);
+                return redirect()->back()->with('error', 'Error con el formato de datos enviado, contacte con soporte técnico.');
+            }
+
+            // Enviar a API de Hacienda (simulado)
+            $response = $this->invoiceService->sendToHaciendaApi($normalized, true);
+
+            if ($response['estado'] === 'rechazado') {
+                Log::warning('🚫 DTE rechazado por Hacienda (simulado):', $response);
+                // Aquí podrías guardar el estado como 'rechazada' en el historial si es necesario
+                // $response['estado'] = 'rechazada';
+            }
+
+            // Guardar venta (incluye el sello de recibido de hacienda si aplica)
+            //  $sales = $this->invoiceService->storeDte($normalized, $response);
+
+            Log::info("Evento de contingencia finalizado con exito: " . ($sales->codigoGeneracion ?? 'N/A'));
+            return redirect()->route('admin.sales.history')->with('success', 'Evento de contingencia finalizado.');
+        } catch (Throwable $e) {
+            Log::error("Error al guardar factura: " . $e->getMessage(), ['trace' => $e->getTraceAsString(), 'request_data' => $request->all()]);
+            return redirect()->back()->with('error', 'Ocurrió un error inesperado al crear evento de contingencia.');
+        }
+    }
+
+    /**
+     * Show create Nota de Credito page.
+     * @param string $codigoGeneracion The generation code of the original invoice.
+     * @return \Inertia\Response | \Illuminate\Http\RedirectResponse
+     * 
+     */
+    public function showCreateCreditNote(string $codigoGeneracion): \Inertia\Response | \Illuminate\Http\RedirectResponse
+    {
+        try {
+            $originalInvoice = $this->saleService->findInvoiceByCodigoGeneracion($codigoGeneracion);
+            if (!$originalInvoice) {
+                return redirect()->route('admin.sales.history')->with('error', 'Factura original no encontrada.');
+            }
+            return Inertia::render('admin/sales/sales-credit-note', [
+                'codigoGeneracion' => $codigoGeneracion,
+                'originalInvoice' => $originalInvoice,
+            ]);
+        } catch (Throwable $e) {
+            Log::error("Error al cargar la página de creación de nota de crédito: " . $e->getMessage());
+            return redirect()->back()->with('error', 'No se pudieron cargar los datos en este momento.');
+        }
+    }
+    /**
+     * Create Nota de Credito based on an existing invoice.
+     * @param string $codigoGeneracion The generation code of the original invoice.
+     * @return \Inertia\Response | \Illuminate\Http\RedirectResponse
+     */
+    public function createNotaCredito(string $codigoGeneracion): \Inertia\Response | \Illuminate\Http\RedirectResponse
+    {
+        try {
+            // Lógica para crear la nota de crédito basada en la factura original
+            $notaCredito = $this->invoiceService->createNotaCredito($codigoGeneracion);
+            return Inertia::render('admin/sales/nota-credito', [
+                'notaCredito' => $notaCredito,
+            ]);
+        } catch (Throwable $e) {
+            Log::error("Error al crear nota de crédito: " . $e->getMessage());
+            return redirect()->back()->with('error', 'Error al crear nota de crédito.');
         }
     }
 
@@ -449,24 +549,27 @@ class AdminController extends Controller
 
     /**
      * Display the client sales record page.
-     *
-     * @return \Inertia\Response
+     * @param HttpRequest $request The HTTP request containing filters
+     * @return \Inertia\Response | \Illuminate\Http\RedirectResponse
      */
-    public function salesRecord(): \Inertia\Response
+    public function salesRecord(HttpRequest $request): \Inertia\Response | \Illuminate\Http\RedirectResponse
+
     {
+        $request->mergeIfMissing([
+            'perPage' => 5,
+        ]);
         try {
-            $clientes = $this->saleService->obtenerTodosLosClientes();
-            $clientRecordHistory = ClienteRecordResource::collection($clientes);
+            $clientes = $this->saleService->obtenerClientesPaginados($request);
+            $clientesResource = ClienteRecordResource::collection($clientes);
 
             return Inertia::render('admin/sales/sales-record', [
-                'clientRecord' => $clientRecordHistory,
+                'clientesRecord' => $clientesResource,
+                'filters' => $request->only(['busqueda', 'perPage']),
+                'pagination' => $clientes->toArray(), // opcional
             ]);
         } catch (Throwable $e) {
-            Log::error("Error al cargar el registro de clientes: " . $e->getMessage());
-            return Inertia::render('admin/sales/sales-record', [
-                'clientRecord' => [],
-                'error' => 'No se pudo cargar el registro de clientes en este momento.'
-            ])->with('error', 'Error al cargar el registro de clientes.');
+            Log::error("Error al cargar clientes: " . $e->getMessage());
+            return redirect()->back()->with('error', 'Error al cargar clientes.');
         }
     }
     #endregion

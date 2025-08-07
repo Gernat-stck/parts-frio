@@ -1,31 +1,22 @@
-import { useIsMobile } from '@/hooks/use-mobile';
 import { Users } from 'lucide-react';
-import { useCallback, useState } from 'react';
-import type { Cliente } from '../../types/clientes';
+import { useState } from 'react';
+import type { ClienteRecord } from '../../types/clientes';
 import { Card, CardContent } from '../ui/card';
-import { Pagination } from '../ui/pagination';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import ClienteRow from './client-row';
 
 export default function ClienteTable({
     clientes,
     onVerHistorial,
-    itemsPerPage = 5,
 }: {
-    clientes: Cliente[];
-    onVerHistorial: (cliente: Cliente) => void;
+    clientes: ClienteRecord[];
+    onVerHistorial: (cliente: ClienteRecord) => void;
     itemsPerPage?: number;
 }) {
-    const [currentPage, setCurrentPage] = useState(1);
-    const [paginatedClientes, setPaginatedClientes] = useState<Cliente[]>([]);
-    const isMobile = useIsMobile();
-
-    const handlePaginatedData = useCallback((data: Cliente[]) => {
-        setPaginatedClientes(data);
-    }, []);
+    const [paginatedClientes] = useState<ClienteRecord[]>(clientes || []);
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-2">
             {/* Desktop Table View */}
             <div className="hidden lg:block">
                 <div className="overflow-x-auto rounded-md border">
@@ -79,19 +70,6 @@ export default function ClienteTable({
                         </CardContent>
                     </Card>
                 )}
-            </div>
-
-            {/* Responsive Pagination */}
-            <div className="flex justify-center pt-4">
-                <Pagination
-                    data={clientes}
-                    itemsPerPage={itemsPerPage}
-                    currentPage={currentPage}
-                    onPageChange={setCurrentPage}
-                    onPaginatedData={handlePaginatedData}
-                    pageInfo={{ itemName: 'clientes' }}
-                    maxPageButtons={isMobile ? 3 : 5} // Fewer buttons on mobile
-                />
             </div>
         </div>
     );
