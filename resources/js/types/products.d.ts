@@ -31,4 +31,7 @@ export interface ProductData {
     ventaGravada?: number; // Optional field for taxed sales
     tributos?: Record<string, unknown> | Array<unknown> | null; // Optional field for taxes
     montoDescu?: number; // Optional field for discount amount
+    ventaNoSuj?: number;
+    psv?: number;
+    noGravado?: number;
 }

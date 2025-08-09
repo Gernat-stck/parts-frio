@@ -14,8 +14,15 @@ return [
     |
     */
     'hacienda' => [
-        'endpoint' => env('HACIENDA_API_URL', 'https://api.hacienda.gob.sv/dte'), // o el que uses
-        'token' => env('HACIENDA_API_TOKEN', 'llllll'),
+        'urlBase' => env('HACIENDA_API_URL', 'https://apitest.dtes.mh.gob.sv/fesv/recepciondte'), // o el que uses
+        'user'=> env('HACIENDA_API_USER', '111111111'),
+        'pwd' => env('HACIENDA_API_PASSWORD', '00000000')
+    ],
+
+    'firmador' => [
+        'endpoint' => env('FIRMADOR_ENDPOINT', 'http://localhost:8113/firmardocumento/'),
+        'nit' => env('HACIENDA_API_USER', '00000000'),
+        'passwordPri'=>env('SECRET_KEY', '00000000000')
     ],
 
     'postmark' => [

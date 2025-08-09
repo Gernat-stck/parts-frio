@@ -1,5 +1,5 @@
 import { buildResumen } from '@/hooks/use-invoice';
-import { BodyDocument, CreditNotePayload, Emitter, Resumen, VentaTercero } from '@/types/invoice.d';
+import { BodyDocument, CreditNotePayload, Emitter, Resumen, Tributos, VentaTercero } from '@/types/invoice.d';
 import { v4 as uuidv4 } from 'uuid';
 import { EMITTER_BASE, ID_BASE } from '../constants/companyConstants';
 import { Receiver } from '../types/clientes';
@@ -29,7 +29,7 @@ const camposOmitidos: (keyof ID)[] = [
 ];
 // Función auxiliar para calcular el resumen de los tributos
 // Función auxiliar para construir el objeto de tributos para el resumen
-const buildResumenTributos = (totalIva: number) => {
+const buildResumenTributos = (totalIva: number): Tributos[] | null => {
     if (totalIva > 0) {
         return [
             {
@@ -163,12 +163,33 @@ export function buildContingencyPayload(data: ContingenciaPayload) {
         },
     };
 }
-const convertirNumeroALetras = (numero: number): string => {
+export const convertirNumeroALetras = (numero: number): string => {
     const entero = Math.floor(numero);
     const decimal = Math.round((numero - entero) * 100);
     return `${entero} CON ${decimal}/100 DOLARES`;
 };
 
+// Función para formatear un número a dos decimales
+const formatNumber = (num: number): number => {
+    return Number(num.toFixed(2));
+};
+export function calculatedTotalsForResume(cartItems: CartItem[]) {
+    return cartItems.reduce(
+        (acc, item) => {
+            const totalPrice = item.price * item.quantity;
+            const baseAmount = totalPrice / 1.13;
+            const ivaAmount = totalPrice - baseAmount;
+
+            acc.subtotal += baseAmount;
+            acc.iva += ivaAmount;
+            acc.total += totalPrice;
+            acc.baseAmount = baseAmount;
+
+            return acc;
+        },
+        { subtotal: 0, iva: 0, total: 0, baseAmount: 0 },
+    );
+}
 /**
  * Construye el payload para la generacion de Factura consumidor final, nota de credito y credito fiscal
  * @param cartItems datos de los productos de la factura
@@ -190,17 +211,36 @@ export function generateInvoiceData({
     resumen = null,
 }: GenerateInvoiceDataParams): InvoicePayload {
     const isNotaCredito = dteType === '05';
+    const isFiscal = dteType === '05' || dteType === '03';
+    const calculatedTotals = calculatedTotalsForResume(cartItems);
 
-    const subtotal = isNotaCredito
-        ? (resumen?.subTotal ?? 0)
-        : cartItems.reduce((total, item) => {
-              return total + (item.quantity * item.price - (item.montoDescu || 0));
-          }, 0);
+    // Formatear los totales
+    calculatedTotals.subtotal = formatNumber(calculatedTotals.subtotal);
+    calculatedTotals.iva = formatNumber(calculatedTotals.iva);
+    calculatedTotals.total = formatNumber(calculatedTotals.total);
+    calculatedTotals.baseAmount = formatNumber(calculatedTotals.baseAmount);
+    // Obtener la fecha y hora en la zona horaria de El Salvador (UTC-6) de forma robusta
+    const elSalvadorFormatter = new Intl.DateTimeFormat('sv-SV', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+        timeZone: 'America/El_Salvador',
+    });
 
-    const iva = subtotal * 0.13;
-    const total = subtotal;
+    const parts = elSalvadorFormatter.formatToParts(new Date());
+    const year = parts.find((p) => p.type === 'year')?.value;
+    const month = parts.find((p) => p.type === 'month')?.value;
+    const day = parts.find((p) => p.type === 'day')?.value;
+    const hour = parts.find((p) => p.type === 'hour')?.value;
+    const minute = parts.find((p) => p.type === 'minute')?.value;
+    const second = parts.find((p) => p.type === 'second')?.value;
 
-    const now = new Date();
+    const fecEmi = `${year}-${month}-${day}`;
+    const horEmi = `${hour}:${minute}:${second}`;
 
     const codigoGeneracion = generarCodigoGeneracion();
     const numeroControl = generarNumeroControl(dteType);
@@ -211,57 +251,65 @@ export function generateInvoiceData({
             tipoDte: dteType,
             numeroControl,
             codigoGeneracion,
-            fecEmi: now.toISOString().split('T')[0],
-            horEmi: now.toTimeString().split(' ')[0],
+            fecEmi: fecEmi,
+            horEmi: horEmi,
         },
         emisor: EMITTER_BASE,
         receptor: { ...customerData },
         cuerpoDocumento: isNotaCredito
             ? (cuerpoDocumento ?? [])
             : cartItems.map((item, index) => {
-                  const ventaGravada = Number((item.quantity * item.price - (item.montoDescu || 0)).toFixed(2));
-                  const ivaItem = Number((ventaGravada * 0.13).toFixed(2));
+                  // Precios sin IVA
                   const tributos = ['20'];
+
+                  // Calcular los totales del ítem
+                  const totalItemPriceWithIva = formatNumber(item.quantity * item.price);
+                  const baseAmount = item.price / 1.13;
+                  const totalItemIva = formatNumber(item.ivaItem * item.quantity);
+                  const totalItemPriceWithoutIva = formatNumber(item.quantity * baseAmount);
+
+                  // Se utilizan los valores ya calculados
+                  const montoDescu = formatNumber(item.montoDescu || 0);
 
                   const baseItem = {
                       numItem: index + 1,
-                      tipoItem: 1,
+                      tipoItem: formatNumber(item.tipo_item || 1),
                       codigo: item.product_code,
                       descripcion: item.description,
-                      cantidad: Number(item.quantity),
-                      uniMedida: 99,
-                      precioUni: Number(item.price.toFixed(2)),
-                      montoDescu: Number(item.montoDescu?.toFixed(2)),
-                      ventaNoSuj: 0.0,
-                      ventaExenta: 0.0,
-                      ventaGravada,
-                      psv: 0.0,
-                      noGravado: 0.0,
-                      tributos,
+                      cantidad: formatNumber(item.quantity),
+                      uniMedida: formatNumber(item.uniMedida || 99),
+                      precioUni: isFiscal ? formatNumber(baseAmount) : formatNumber(item.price), // Precio por unidad sin IVA
+                      montoDescu,
+                      ventaNoSuj: formatNumber(item.ventaNoSuj || 0),
+                      ventaExenta: formatNumber(item.ventaExenta || 0),
+                      ventaGravada: isFiscal ? totalItemPriceWithoutIva : totalItemPriceWithIva, // Total del ítem sin IVA ni descuentos
+                      psv: formatNumber(item.psv || 0),
+                      noGravado: formatNumber(item.noGravado || 0),
+                      tributos: tributos || null,
                       numeroDocumento: null,
                       codTributo: null,
                   };
 
-                  if (dteType !== '03' && dteType !== '05') {
+                  if (!isFiscal) {
                       return {
                           ...baseItem,
-                          ivaItem,
+                          ivaItem: totalItemIva, // Total de IVA para este ítem
                           tributos: null,
                       };
                   }
-
-                  return baseItem; // para documentos fiscales: sin ivaItem
+                  return baseItem;
               }),
-
         resumen: buildResumen({
             documentType: dteType as '01' | '03' | '05',
-            subtotal,
-            total,
-            iva,
+            subtotal: calculatedTotals.total,
+            total: calculatedTotals.total,
+            iva: calculatedTotals.iva,
             cartItems,
             cuerpoDocumento: isNotaCredito ? cuerpoDocumento : null,
             convertirNumeroALetras,
             paymentData,
+            baseAmount: calculatedTotals.baseAmount,
+            resumenFNc: resumen ? resumen : null,
         }),
         documentoRelacionado: isNotaCredito ? (documentoRelacionado ?? null) : null,
         otrosDocumentos: null,
@@ -272,7 +320,6 @@ export function generateInvoiceData({
     return prepareSchema;
 }
 
-
 /**
  * Construye el payload para la certificación de Nota de Crédito.
  * @param data El objeto de datos inicial para la Nota de Crédito.
@@ -280,8 +327,6 @@ export function generateInvoiceData({
  */
 export function buildCreditNotePayload(data: CreditNotePayload): CreditNotePayload {
     const now = new Date();
-    const codigoGeneracion = uuidv4().toUpperCase();
-    const numeroControl = `DTE-05-${codigoGeneracion.substring(0, 8)}-${now.getTime()}`.substring(0, 31);
 
     // 1. Emisor: Se seleccionan solo los campos requeridos por el esquema
     const emisor: Emitter = {
@@ -303,6 +348,7 @@ export function buildCreditNotePayload(data: CreditNotePayload): CreditNotePaylo
 
     // 2. Cuerpo del Documento: Se eliminan los campos 'psv' y 'noGravado'
     const cuerpoDocumento: BodyDocument[] = data.cuerpoDocumento.map((item) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { psv, noGravado, ...rest } = item;
         const tributos = item.ventaGravada > 0 ? item.tributos : null;
 
@@ -341,8 +387,8 @@ export function buildCreditNotePayload(data: CreditNotePayload): CreditNotePaylo
             version: 3,
             ambiente: data.identificacion.ambiente,
             tipoDte: '05',
-            numeroControl: data.identificacion.numeroControl,
-            codigoGeneracion: data.identificacion.codigoGeneracion,
+            numeroControl: generarNumeroControl('05'),
+            codigoGeneracion: generarCodigoGeneracion(),
             tipoModelo: 1,
             tipoOperacion: 1,
             tipoContingencia: null,

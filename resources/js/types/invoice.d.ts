@@ -114,6 +114,11 @@ export interface BodyDocument {
     numeroDocumento: null;
     codTributo?: null;
 }
+interface Tributos {
+    codigo: string;
+    descripcion: string;
+    valor: number;
+}
 export interface Resumen {
     totalNoSuj: number;
     totalExenta: number;
@@ -124,7 +129,7 @@ export interface Resumen {
     descuGravada: number;
     porcentajeDescuento?: number;
     totalDescu: number;
-    tributos?: Array<unknown> | null;
+    tributos?: Tributos[] | null;
     subTotal: number;
     ivaPerci1?: number;
     ivaRete1?: number;
@@ -142,7 +147,7 @@ export interface Resumen {
 export interface InvoicePayload {
     identificacion: ID;
     emisor: Emitter;
-    receptor: Receiver ;
+    receptor: Receiver;
     cuerpoDocumento: BodyDocument[];
     resumen: Resumen;
     documentoRelacionado: DocumentoRelacionado[] | null;
@@ -177,7 +182,7 @@ export interface Apendice {
 export interface VentaTercero {
     nit: string;
     nombre: string;
-} 
+}
 export interface CreditNotePayload {
     identificacion: ID;
     documentoRelacionado: DocumentoRelacionado[] | null;

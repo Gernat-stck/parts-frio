@@ -6,7 +6,8 @@ use App\Http\Requests\Inventory\StoreInventoryItemRequest;
 use App\Http\Requests\Inventory\UpdateInventoryItemRequest;
 use App\Models\Inventory;
 use App\Services\ImageStorageService;
-use Illuminate\Database\Eloquent\Collection; 
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -72,7 +73,24 @@ class InventoryService
             return null;
         }
     }
-
+    /**
+     * Busca ítems en el inventario según un término y una categoría.
+     *
+     * @param string|null $search
+     * @param string|null $category
+     * @return Collection
+     */
+    public function searchItems(?string $search): Collection
+    {
+        $query = Inventory::query();
+        if ($search) {
+            $query->where(function (Builder $q) use ($search) {
+                $q->where('product_name', 'ILIKE', "%$search%")
+                    ->orWhere('description', 'ILIKE', "%$search%");
+            });
+        }
+        return $query->get();
+    }
     /**
      * Add a new product to the inventory.
      *
@@ -80,10 +98,38 @@ class InventoryService
      * @return Inventory
      * @throws Throwable If an error occurs during transaction.
      */
+    // En tu controlador o servicio
     public function addProduct(StoreInventoryItemRequest $request): Inventory
     {
         return DB::transaction(function () use ($request) {
             $data = $request->validated();
+
+            // 1. Definir campos con valor por defecto
+            $defaultNumericFields = [
+                'psv',
+                'noGravado',
+                'ventaNoSuj',
+                'ventaExenta',
+                'ventaGravada',
+                'montoDescu',
+                'cantidad',
+                'precioUni',
+                'ivaItem',
+            ];
+
+            // 2. Asignar valores por defecto (0.00) si no están presentes y formatear
+            foreach ($defaultNumericFields as $field) {
+                $value = $data[$field] ?? 0.00;
+                $data[$field] = number_format((float)$value, 2, '.', '');
+            }
+
+            // 3. Formatear otros campos si es necesario, como price
+            $data['price'] = number_format((float)$data['price'], 2, '.', '');
+
+            // 4. Manejar campos que son arrays o null
+            $data['tributos'] = $data['tributos'] ?? null;
+            $data['numeroDocumento'] = $data['numeroDocumento'] ?? null;
+            $data['codTributo'] = $data['codTributo'] ?? null;
 
             if ($request->hasFile('img_product')) {
                 try {
@@ -99,7 +145,6 @@ class InventoryService
                 Log::info("Producto añadido al inventario: " . $item->product_code);
                 return $item;
             } catch (Throwable $e) {
-                // Si la creación falla y ya se guardó la imagen, considera eliminarla.
                 if (isset($data['img_product'])) {
                     $this->imageStorageService->deleteImage($data['img_product']);
                 }

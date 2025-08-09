@@ -10,8 +10,9 @@ Route::middleware(['auth', 'verified', 'roles:admin'])->group(function () {
     #region Display the inventory management page
     Route::get('/admin/inventory', [AdminController::class, 'manageInventory'])->name('admin.inventory');
     Route::get('/admin/inventory/create', [AdminController::class, 'createInventory'])->name('admin.inventory.create');
+    Route::get('/items/search', [AdminController::class, 'searchItem'])->name('items.search');
     Route::get('/admin/inventory/edit/{id}', [AdminController::class, 'editInventory'])->name('admin.inventory.edit');
-    Route::post('/inventory/store', [AdminController::class, 'storeInventoryItem'])->name('admin.inventory.store');
+    Route::post('/inventory/store', [AdminController::class, 'storeInventoryItem'])->middleware(['auth', 'role:admin'])->name('admin.inventory.store');
     Route::put('/inventory/update/{inventory:product_code}', [AdminController::class, 'updateInventoryItem'])->name('admin.inventory.update');
     Route::delete('/inventory/delete/{inventory:product_code}', [AdminController::class, 'deleteInventoryItem'])->name('admin.inventory.delete');
     #endregion

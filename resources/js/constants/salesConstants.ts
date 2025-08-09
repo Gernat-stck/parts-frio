@@ -76,6 +76,15 @@ export const PAYMENT_TYPE: options[] = [
     { value: '14', label: 'Giro Bancario' },
     { value: '99', label: 'Otro (Indicar medio de pago)' },
 ];
+export const TRIBUTOS_OPTIONS: options[] = [
+    { value: '20', label: 'Impuesto sobre el Valor Agregado (IVA)' },
+    { value: 'A8', label: 'Impuesto Especial al Combustible' },
+    { value: '57', label: 'Impuesto Industria de Cemento' },
+    { value: '90', label: 'Billetes y monedas' },
+    { value: 'D4', label: 'Otros impuestos casos especiales' },
+    { value: 'D5', label: 'Otras tasas casos especiales' },
+    { value: 'A6', label: 'Impuestos ad-valorem, armas de fuego, municiones explosivas y articulos similares' },
+];
 
 export const PLAZO_OPTIONS: options[] = [
     { value: '01', label: 'Dias' },
@@ -188,39 +197,3 @@ export const MUNICIPALITIES_BY_DEPARTMENT: Record<string, { value: string; label
         { value: '20', label: 'LA UNION SUR' },
     ],
 };
-
-export const ECONOMIC_ACTIVITIES = [
-    { value: '01111', label: 'Cultivo de cereales excepto arroz y para forrajes' },
-    { value: '01112', label: 'Cultivo de legumbres' },
-    { value: '01113', label: 'Cultivo de semillas oleaginosas' },
-    { value: '01114', label: 'Cultivo de plantas para la preparación de semillas' },
-    { value: '01119', label: 'Cultivo de otros cereales excepto arroz y forrajeros n.c.p.' },
-    { value: '01120', label: 'Cultivo de arroz' },
-    { value: '01131', label: 'Cultivo de raíces y tubérculos' },
-    { value: '01132', label: 'Cultivo de brotes, bulbos, vegetales tubérculos y cultivos similares' },
-    { value: '01133', label: 'Cultivo hortícola de fruto' },
-    { value: '01134', label: 'Cultivo de hortalizas de hoja y otras hortalizas ncp' },
-    { value: '01140', label: 'Cultivo de caña de azúcar' },
-    { value: '01150', label: 'Cultivo de tabaco' },
-    { value: '01161', label: 'Cultivo de algodón' },
-    { value: '01162', label: 'Cultivo de fibras vegetales excepto algodón' },
-    { value: '01191', label: 'Cultivo de plantas no perennes para la producción de semillas y flores' },
-    { value: '01192', label: 'Cultivo de cereales y pastos para la alimentación animal' },
-    { value: '01199', label: 'Producción de cultivos no estacionales ncp' },
-    { value: '01220', label: 'Cultivo de frutas tropicales' },
-    { value: '01230', label: 'Cultivo de cítricos' },
-    { value: '01240', label: 'Cultivo de frutas de pepita y hueso' },
-    { value: '01251', label: 'Cultivo de frutas ncp' },
-    { value: '01252', label: 'Cultivo de otros frutos y nueces de árboles y arbustos' },
-    { value: '01260', label: 'Cultivo de frutos oleaginosos' },
-    { value: '01271', label: 'Cultivo de café' },
-    { value: '01272', label: 'Cultivo de plantas para la elaboración de bebidas excepto café' },
-    { value: '01281', label: 'Cultivo de especias y aromáticas' },
-    { value: '01282', label: 'Cultivo de plantas para la obtención de productos medicinales y farmacéuticos' },
-    { value: '01291', label: 'Cultivo de árboles de hule (caucho) para la obtención de látex' },
-    { value: '01292', label: 'Cultivo de plantas para la obtención de productos químicos y colorantes' },
-    { value: '01299', label: 'Producción de cultivos perennes ncp' },
-    { value: '01300', label: 'Propagación de plantas' },
-    { value: '01301', label: 'Cultivo de plantas y flores ornamentales' },
-    // Puedes continuar agregando más según lo necesites
-];

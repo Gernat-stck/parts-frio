@@ -1,8 +1,8 @@
 import { router } from '@inertiajs/react';
 import { useCallback, useState } from 'react';
+import { toast } from 'sonner';
 import { z, ZodError } from 'zod';
 import { ProductData } from '../types/products';
-import { toast } from 'sonner';
 
 const productSchema = z
     .object({
@@ -71,11 +71,11 @@ function normalizeFormData(data: ProductData): ProductData {
     return {
         ...data,
         price: Number(data.price),
-        ivaItem: Number((data.price * 0.13).toFixed(2)),
+        ivaItem: Number((data.price - data.price / 1.13).toFixed(2)),
         stock: Number(data.stock),
         min_stock: Number(data.min_stock),
         max_stock: Number(data.max_stock),
-        precioUni: Number((data.price + data.price * 0.13).toFixed(2)),
+        precioUni: Number((data.price / 1.13).toFixed(2)),
         tipo_item: Number(data.tipo_item),
         cantidad: data.cantidad ? Number(data.cantidad) : undefined,
     };
@@ -99,8 +99,8 @@ export function useProductForm(mode: 'create' | 'edit', initial?: Partial<Produc
             // Calcular automáticamente ivaItem si cambia el precio
             if (key === 'price') {
                 if (!isNaN(price)) {
-                    updated.ivaItem = Number((price * 0.13).toFixed(2));
-                    updated.precioUni = Number(price);
+                    updated.ivaItem = Number((price - price / 1.13).toFixed(2));
+                    updated.precioUni = Number((price / 1.13).toFixed(2));
                 }
             }
             return updated;
@@ -138,8 +138,8 @@ export function useProductForm(mode: 'create' | 'edit', initial?: Partial<Produc
         router.post(route, formData, {
             preserveScroll: true,
             onError: () => {
-                toast.error('Ups, algo salio mal, contacta a soporte')
-            }
+                toast.error('Ups, algo salio mal, contacta a soporte');
+            },
         });
     }, [form, validate, isEdit]);
 

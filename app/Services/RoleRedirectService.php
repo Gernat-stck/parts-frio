@@ -18,6 +18,8 @@ class RoleRedirectService
      */
     public function getRedirectRouteForUser(User $user): string
     {
+        
+        Log::info("Middleware de roles ejecutado para usuario {$user->user_id}");
         try {
             $roleDashboards = Config::get('roles.dashboards');
 

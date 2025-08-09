@@ -157,7 +157,7 @@ export default function ProductForm(props: {
                             <DecimalField
                                 id="price"
                                 label="Precio con IVA *"
-                                value={form.price}
+                                value={Number.parseFloat(form.price.toFixed(2))}
                                 setValue={(val) => setField('price', val)}
                                 error={errors.price}
                                 prefix="$"
@@ -168,7 +168,7 @@ export default function ProductForm(props: {
                                 label="IVA (13%)"
                                 type="number"
                                 step={0.01}
-                                value={Number.parseFloat((form.price * 0.13).toFixed(2))}
+                                value={(form.price -(form.price/1.13)).toFixed(2)}
                                 disabled
                                 prefix="$"
                                 error={errors.ivaItem}
@@ -179,7 +179,7 @@ export default function ProductForm(props: {
                                 label="Precio sin IVA"
                                 type="number"
                                 step={0.01}
-                                value={Number.parseFloat((form.price - form.price * 0.13).toFixed(2))}
+                                value={(form.price/1.13).toFixed(2)}
                                 disabled
                                 prefix="$"
                                 error={errors.precioUni}

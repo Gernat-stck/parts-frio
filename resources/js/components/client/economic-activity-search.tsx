@@ -1,12 +1,9 @@
-'use client';
-
-import type React from 'react';
-
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ECONOMIC_ACTIVITIES } from '@/constants/salesConstants';
 import { X } from 'lucide-react';
+import type React from 'react';
 import { useEffect, useState } from 'react';
+import { ECONOMIC_ACTIVITIES } from '../../constants/economic-activity';
 
 interface Props {
     codActividad?: string | null;
@@ -14,7 +11,9 @@ interface Props {
     onSelect: (value: string, label: string) => void;
     error?: string;
 }
-
+export function getEconomicActivitiesWithMinDigits(minDigits: number = 5) {
+    return ECONOMIC_ACTIVITIES.filter((activity) => activity.value.length >= minDigits);
+}
 export default function EconomicActivitySearch({ codActividad, descActividad, onSelect, error }: Props) {
     const [query, setQuery] = useState('');
     const [hasSelected, setHasSelected] = useState(false);
@@ -71,7 +70,7 @@ export default function EconomicActivitySearch({ codActividad, descActividad, on
             </div>
 
             {!hasSelected && query && (
-                <ul className="z-10 mt-2 max-h-40 overflow-auto rounded border  shadow-lg">
+                <ul className="z-10 mt-2 max-h-40 overflow-auto rounded border shadow-lg">
                     {filtered.length > 0 ? (
                         filtered.map((item) => (
                             <li

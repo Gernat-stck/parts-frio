@@ -32,7 +32,7 @@ class SalesHistory extends Model
         'tipoModelo',
         'horaEmi',
         'fechaEmi',
-        'tipoMoneda',
+        'monto',
         'nitReceiver',
         'estado',
         'sello_recibido',

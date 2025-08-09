@@ -144,11 +144,11 @@ export function ShoppingCartPanel({
                             <div className="mt-3 flex-shrink-0 space-y-2 border-t pt-3">
                                 <div className="flex justify-between text-xs sm:text-sm">
                                     <span>Subtotal:</span>
-                                    <span>${(cartTotals.subtotal - cartTotals.tax).toFixed(2)}</span>
+                                    <span>${(cartTotals.subtotal).toFixed(2)}</span>
                                 </div>
                                 <div className="flex justify-between text-xs sm:text-sm">
-                                    <span>IVA (12%):</span>
-                                    <span>${cartTotals.subtotal.toFixed(2)}</span>
+                                    <span>IVA (13%):</span>
+                                    <span>${cartTotals.tax.toFixed(2)}</span>
                                 </div>
                                 <div className="flex justify-between border-t pt-2 text-base font-bold sm:text-lg">
                                     <span>Total:</span>

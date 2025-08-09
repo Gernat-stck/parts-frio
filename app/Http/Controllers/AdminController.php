@@ -12,6 +12,8 @@ use App\Http\Resources\EmployeeResource;
 use App\Http\Resources\ProductResource;
 use App\Http\Resources\SalesHistoryResource;
 use App\Models\User;
+use App\Services\Hacienda\FirmadorService;
+use App\Services\Hacienda\HaciendaService;
 use App\Services\InventoryService;
 use App\Services\InvoiceService;
 use App\Services\SaleService;
@@ -29,6 +31,8 @@ class AdminController extends Controller
     protected InvoiceService $invoiceService;
     protected SaleService $saleService;
     protected UserService $userService;
+    protected FirmadorService $firmador;
+    protected HaciendaService $haciendaService;
 
     /**
      * Constructor for AdminController
@@ -37,13 +41,17 @@ class AdminController extends Controller
      * @param InvoiceService $invoiceService
      * @param SaleService $saleService
      * @param UserService $userService
+     * @param FirmadorService $firmador
+     * @param HaciendaService $haciendaService
      */
-    public function __construct(InventoryService $inventoryService, InvoiceService $invoiceService, SaleService $saleService, UserService $userService)
+    public function __construct(InventoryService $inventoryService, InvoiceService $invoiceService, SaleService $saleService, UserService $userService, FirmadorService $firmador, HaciendaService $haciendaService)
     {
         $this->inventoryService = $inventoryService;
         $this->invoiceService = $invoiceService;
         $this->saleService = $saleService;
         $this->userService = $userService;
+        $this->firmador = $firmador;
+        $this->haciendaService = $haciendaService;
     }
 
     /**
@@ -57,7 +65,21 @@ class AdminController extends Controller
     }
 
     #region: Inventarios
+    /**
+     * Dinamic Search with axios
+     * @param HttpRequest $request
+     * @return ProductResource
+     */
 
+    public function searchItem(HttpRequest $request)
+    {
+        $query = $request->input('q');
+
+        // Llama al servicio para obtener los ítems
+        $items = $this->inventoryService->searchItems($query);
+        // Devuelve la respuesta usando el ProductResource
+        return ProductResource::collection($items);
+    }
     /**
      * Display the inventory management page.
      *
@@ -131,6 +153,7 @@ class AdminController extends Controller
     public function storeInventoryItem(StoreInventoryItemRequest $request): \Illuminate\Http\RedirectResponse
     {
         try {
+            Log::info('Creando Producto');
             $item = $this->inventoryService->addProduct($request);
             return redirect()->route('admin.inventory')->with('success', 'Producto creado con éxito.');
         } catch (Throwable $e) {
@@ -261,7 +284,7 @@ class AdminController extends Controller
      */
     public function updateEmployee(EmployeeUpdateRequest $request, string $userId): \Illuminate\Http\RedirectResponse
     {
-        Log::info("Intento de actualización de usuario: {$userId}", ['request_data' => $request->all()]);
+
         try {
             $user = User::where('user_id', $userId)->first(); // Buscar el usuario por user_id
             if (!$user) {
@@ -358,32 +381,18 @@ class AdminController extends Controller
 
             $normalizer = new SchemaAwareNormalizer();
             $normalized = $normalizer->normalize($rawInput, $schema);
-
-            // Validar estructura con Opis
-            $schemaResult = $this->invoiceService->validateWithOpis($normalized);
-
-            if ($schemaResult['estado'] === 'error') {
-                Log::warning('❌ Validación Opis fallida:', ['errores' => $schemaResult['errores'], 'payload' => $normalized]);
-                return redirect()->back()->with('error', 'Error con el formato de datos enviado, contacte con soporte técnico.');
-            }
-
-            // Enviar a API de Hacienda (simulado)
-            $response = $this->invoiceService->sendToHaciendaApi($normalized);
-
-            if ($response['estado'] === 'rechazado') {
-                Log::warning('🚫 DTE rechazado por Hacienda (simulado):', $response);
-                // Aquí podrías guardar el estado como 'rechazada' en el historial si es necesario
-                // $response['estado'] = 'rechazada';
-            }
-
+            // Enviar a API de Hacienda 
+            $response = $this->haciendaService->recepcionDTE( $normalized);
+            // Acceder al array ya decodificado directamente desde la propiedad 'original'
+            $responseArray = $response->original;
             // Guardar venta (incluye el sello de recibido de hacienda si aplica)
-            $sales = $this->invoiceService->storeDte($normalized, $response);
+            $sales = $this->invoiceService->storeDte($normalized, $responseArray);
 
             Log::info("Venta finalizada y registrada para código de generación: " . ($sales->codigoGeneracion ?? 'N/A'));
             return redirect()->route('admin.sales')->with('success', 'Venta Finalizada y DTE procesado.');
         } catch (Throwable $e) {
-            Log::error("Error al guardar factura: " . $e->getMessage(), ['trace' => $e->getTraceAsString(), 'request_data' => $request->all()]);
-            return redirect()->back()->with('error', 'Ocurrió un error inesperado al finalizar la venta.');
+            Log::error("Error al guardar factura: " . $e->getMessage(), ['request_data' => $normalized]);
+            return redirect()->back()->with('error', $e->getMessage());
         }
     }
 

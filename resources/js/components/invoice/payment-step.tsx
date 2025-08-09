@@ -15,12 +15,12 @@ interface PaymentStepProps {
 }
 
 export default function PaymentStep({ data, setData, cartItems, onNext, onPrev }: PaymentStepProps) {
+    console.log('cartItems', cartItems);
     const calculateTotal = () => {
         const subtotal = cartItems.reduce((total, item) => {
             return total + (item.quantity * item.price - (item.montoDescu || 0));
         }, 0);
-        const iva = subtotal * 0.13;
-        return subtotal + iva;
+        return subtotal;
     };
 
     const total = calculateTotal();

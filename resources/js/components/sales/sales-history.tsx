@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { buildContingencyPayload, convertToFormData } from '../../helpers/generadores';
 import { ServerPagination } from '../ServerPagination';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { DialogAnularFactura } from './anulation-dialog';
 import { DialogCertificarFacturas } from './certificate-dialog';
 import { DialogDetallesFactura } from './detail-dialog';
@@ -131,13 +132,13 @@ export default function HistorialFacturas() {
             toast.error('La factura no tiene un código de generación válido para crear una nota de crédito.');
             return;
         }
-        if(tipoDocumento !== '03'){
+        if (tipoDocumento !== '03') {
             toast.error('Nota de credito solo valido para documentos Credito Fiscal (03) y Comprobante de retencion (07)');
-            return
+            return;
         }
         router.get(route('admin.sales.show.credit.note', { codigoGeneracion: CodigoGeneracion }));
     };
-    
+
     useEffect(() => {
         // Debounce para evitar múltiples solicitudes mientras se escribe
         const timeout = setTimeout(() => {
@@ -219,7 +220,7 @@ export default function HistorialFacturas() {
                                 {facturas.length > 0 ? (
                                     facturas.map((factura) => (
                                         <TableRow key={factura.id} className="transition-colors hover:bg-muted/30">
-                                            <TableCell className="text-sm text-center">{factura.tipoDTE}</TableCell>
+                                            <TableCell className="text-center text-sm">{factura.tipoDTE}</TableCell>
                                             <TableCell className="text-sm">{factura.fechaGeneracion}</TableCell>
                                             <TableCell>
                                                 {factura.codigoGeneracion ? (
@@ -230,9 +231,18 @@ export default function HistorialFacturas() {
                                                     </Badge>
                                                 )}
                                             </TableCell>
-                                            <TableCell className="text-sm font-medium">{factura.receptor}</TableCell>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <TableCell className="max-w-70 truncate overflow-hidden text-sm font-medium whitespace-nowrap">
+                                                        {factura.receptor}
+                                                    </TableCell>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    <span>{factura.receptor}</span>
+                                                </TooltipContent>
+                                            </Tooltip>
                                             <TableCell className="text-sm">{factura.documentoReceptor}</TableCell>
-                                            <TableCell className="text-right text-sm">${factura.monto}</TableCell>
+                                            <TableCell className="text-right text-sm">${factura.monto.toFixed(2)}</TableCell>
                                             <TableCell>
                                                 <Badge
                                                     variant={

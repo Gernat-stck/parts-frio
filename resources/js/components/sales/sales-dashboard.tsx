@@ -12,6 +12,7 @@ import type { DteTypeValue } from '@/constants/salesConstants';
 import type { ProductData } from '@/types/products';
 import { ShoppingCart } from 'lucide-react';
 import { toast } from 'sonner';
+import { normalizeNumericFields } from '../../helpers/map-helper';
 import type { Auth } from '../../types';
 import type { CartItem } from '../../types/invoice';
 import EmptyState from '../empty-state';
@@ -22,9 +23,24 @@ interface SalesDashboardProps {
     auth: Auth;
     availableProducts: ProductData[];
 }
-const IVA_RATE = 0.13; // 13%
 
+// Define las claves que deben ser normalizadas
+const numericKeys: Array<keyof ProductData> = [
+    'price',
+    'ivaItem',
+    'psv',
+    'noGravado',
+    'ventaNoSuj',
+    'ventaExenta',
+    'ventaGravada',
+    'montoDescu',
+    'cantidad',
+    'precioUni',
+];
 export default function SalesDashboard({ auth, availableProducts = [] }: SalesDashboardProps) {
+    // Normalizar los datos de los productos usando el helper genérico
+    const normalizedProducts = useMemo(() => normalizeNumericFields(availableProducts, numericKeys), [availableProducts]);
+
     // Estados principales
     const [cart, setCart] = useState<CartItem[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -32,7 +48,7 @@ export default function SalesDashboard({ auth, availableProducts = [] }: SalesDa
     const [isCartOpen, setIsCartOpen] = useState(false);
     // Filtrar productos disponibles
     const filteredProducts = useMemo(() => {
-        return availableProducts.filter((product) => {
+        return normalizedProducts.filter((product) => {
             if (product.stock === 0) return false; // No mostrar productos sin stock
 
             const matchesSearch =
@@ -42,30 +58,32 @@ export default function SalesDashboard({ auth, availableProducts = [] }: SalesDa
 
             return matchesSearch && matchesCategory;
         });
-    }, [searchTerm, categoryFilter, availableProducts]);
+    }, [searchTerm, categoryFilter, normalizedProducts]);
 
-    // Calcular totales del carrito
     const cartTotals = useMemo(() => {
-        let totalWithIva = 0;
-        let totalIvaAmount = 0;
-        let totalWithoutIva = 0;
+        let subtotal = 0; // Almacenará el total sin IVA
+        let totalIva = 0; // Almacenará el total de IVA
+        let total = 0; // Almacenará el total con IVA
 
         cart.forEach((item) => {
-            const itemPriceWithIva = item.price; // El precio del ítem ya incluye IVA
             const itemQuantity = item.quantity;
+            const itemPriceWithIva = Number(item.price); // Precio por unidad CON IVA
+            const itemIvaAmount = Number(item.ivaItem); // Monto del IVA por unidad
 
-            const pricePerUnitWithoutIva = itemPriceWithIva / (1 + IVA_RATE);
-            const ivaPerUnit = itemPriceWithIva - pricePerUnitWithoutIva;
+            // Sumar el precio sin IVA
+            subtotal += (itemPriceWithIva - itemIvaAmount) * itemQuantity;
 
-            totalWithoutIva += pricePerUnitWithoutIva * itemQuantity;
-            totalIvaAmount += ivaPerUnit * itemQuantity;
-            totalWithIva += itemPriceWithIva * itemQuantity; // Esto es simplemente la suma de los subtotales del carrito
+            // Sumar el monto del IVA
+            totalIva += itemIvaAmount * itemQuantity;
+
+            // Sumar el total con IVA
+            total += itemPriceWithIva * itemQuantity;
         });
 
         return {
-            subtotal: totalWithoutIva, // Subtotal antes de aplicar IVA
-            tax: totalIvaAmount, // Monto total de IVA incluido
-            total: totalWithIva, // Total final (ya con IVA incluido)
+            subtotal: subtotal,
+            tax: totalIva,
+            total: total,
         };
     }, [cart]);
 
@@ -83,6 +101,8 @@ export default function SalesDashboard({ auth, availableProducts = [] }: SalesDa
                     item.id === product.id ? { ...item, quantity: item.quantity + 1, subtotal: (item.quantity + 1) * item.price } : item,
                 );
             } else {
+                // Al agregar al carrito, el subtotal debe ser el precio por la cantidad
+                // Aca `product.price` ya será un número
                 return [...prev, { ...product, quantity: 1, subtotal: product.price }];
             }
         });

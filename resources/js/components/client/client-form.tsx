@@ -49,10 +49,7 @@ const fiscalReceiverSchema = z.object({
     // tipoDocumento: z.string().min(1, 'Tipo de documento es requerido').optional(),
     // numDocumento: z.string().min(1, 'Número de documento es requerido').optional(),
     nombre: z.string().min(1, 'Nombre es requerido'),
-    nit: z
-        .string()
-        .min(1, 'NIT es requerido para documentos fiscales')
-        .regex(/^\d{14}$/, 'NIT debe tener 14 dígitos'),
+    nit: z.string().min(1, 'NIT es requerido para documentos fiscales'),
     nrc: z
         .string()
         .min(1, 'NRC es requerido para documentos fiscales')
@@ -81,9 +78,9 @@ const createReceiverSchema = (documentType: '01' | '03' | '05' | null | undefine
 interface CustomerDataStepProps {
     data: Receiver;
     setData: (data: Receiver) => void;
-    onNext: (data: Receiver) => void;
-    onPrev: () => void;
-    documentType: '01' | '03' | '05' | null | undefined;
+    onNext?: (data: Receiver) => void;
+    onPrev?: () => void;
+    documentType?: '01' | '03' | '05' | null | undefined;
 }
 
 interface ValidationErrors {
@@ -142,9 +139,10 @@ export default function ClientFormStep({ data, setData, onNext, onPrev, document
             }
             const cleanedFinalData = convertEmptyStringsToNull(finalData);
 
-
             setData(cleanedFinalData);
-            onNext(cleanedFinalData); 
+            if (typeof onNext === 'function') {
+                onNext(cleanedFinalData);
+            }
         } else {
             console.log('Formulario inválido. Errores:', errors);
         }
@@ -156,14 +154,16 @@ export default function ClientFormStep({ data, setData, onNext, onPrev, document
     }, [documentType]);
 
     const isFiscalDocument = documentType === '03' || documentType === '05';
-
+    const isCreditNote = documentType === '05';
     return (
-        <div className="space-y-4 p-2 sm:space-y-6 sm:p-4">
-            <ScrollArea className="h-[70vh]">
+        <div className={`${isCreditNote ? '' : 'space-y-4 p-2 sm:space-y-6 sm:p-4'}`}>
+            <ScrollArea className={`${isCreditNote ? 'h-[45vh]' : 'h-[70vh]'}`}>
                 <Card className="border-0 shadow-none">
-                    <CardHeader className="px-0 sm:px-6">
-                        <CardTitle className="text-lg sm:text-xl">Datos del Cliente</CardTitle>
-                    </CardHeader>
+                    {!isCreditNote && (
+                        <CardHeader className="px-0 sm:px-6">
+                            <CardTitle className="text-lg sm:text-xl">Datos del Cliente</CardTitle>
+                        </CardHeader>
+                    )}
                     <CardContent className="space-y-4 px-0 sm:space-y-6 sm:px-6">
                         {!isFiscalDocument && (
                             <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
@@ -383,14 +383,16 @@ export default function ClientFormStep({ data, setData, onNext, onPrev, document
                 </Card>
             </ScrollArea>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
-                <Button variant="outline" onClick={onPrev} className="w-full bg-transparent sm:w-auto">
-                    Volver al Carrito
-                </Button>
-                <Button onClick={handleNext} className="w-full sm:w-auto">
-                    Continuar al Pago
-                </Button>
-            </div>
+            {!isCreditNote && (
+                <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
+                    <Button variant="outline" onClick={onPrev} className="w-full bg-transparent sm:w-auto">
+                        Volver al Carrito
+                    </Button>
+                    <Button onClick={handleNext} className="w-full sm:w-auto">
+                        Continuar al Pago
+                    </Button>
+                </div>
+            )}
         </div>
     );
 }

@@ -1,8 +1,8 @@
+import ProductForm from '@/components/inventory/product-form';
 import AppLayout from '@/layouts/app-layout';
 import { adminNavItems } from '@/lib/nav-items';
 import { type BreadcrumbItem } from '@/types';
-import { Head } from '@inertiajs/react';
-import ProductForm from '@/components/inventory/product-form';
+import { Head, usePage } from '@inertiajs/react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -15,7 +15,9 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-export default function NewItem({categories}: { categories: string[] }) {
+export default function NewItem({ categories }: { categories: string[] }) {
+    const props = usePage().props;
+    console.log(props.csrf_token);
     return (
         <AppLayout breadcrumbs={breadcrumbs} mainNavItems={adminNavItems}>
             <Head title="Crear nuevo producto" />

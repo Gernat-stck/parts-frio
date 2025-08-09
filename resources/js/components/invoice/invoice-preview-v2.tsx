@@ -6,7 +6,7 @@ import { convertToFormData, generateInvoiceData } from '@/helpers/generadores';
 import { getPaymentLabel } from '@/helpers/get-labels';
 import type { Receiver } from '@/types/clientes';
 import type { CartItem, InvoicePayload, Payment } from '@/types/invoice';
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { Award, Download, Mail, PrinterIcon as Print } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -19,7 +19,7 @@ interface InvoiceStepProps {
 
 export default function InvoiceStep({ cartItems, customerData, paymentData, onPrev }: InvoiceStepProps) {
     const dteType = localStorage.getItem('typeDte') || '01';
-
+    const page = usePage();
     const invoiceData: InvoicePayload = generateInvoiceData({ cartItems, customerData, paymentData, dteType });
 
     const onCertificate = () => {
@@ -29,7 +29,21 @@ export default function InvoiceStep({ cartItems, customerData, paymentData, onPr
             return;
         }
         const formData = convertToFormData(invoiceData);
-        router.post(route('admin.save.invoice', { tipoDte: dteType }), formData);
+        router.post(route('admin.save.invoice', { tipoDte: dteType }), formData, {
+            onFinish: () => {
+                // Verifica si hay errores en la respuesta
+                if (page.props?.errors || page.props?.error) {
+                    console.warn('Error al guardar factura, localStorage no se limpia');
+                    return;
+                }
+
+                // Si no hay errores, limpia el localStorage
+                localStorage.removeItem('cart');
+                localStorage.removeItem('client');
+                localStorage.removeItem('payment');
+                localStorage.removeItem('typeDte');
+            },
+        });
     };
     return (
         <div className="flex h-full w-full flex-col">
@@ -229,7 +243,15 @@ export default function InvoiceStep({ cartItems, customerData, paymentData, onPr
                                     </div>
                                     <div className="flex justify-between text-sm">
                                         <span>IVA (13%):</span>
-                                        <span>${invoiceData.resumen.totalIva?.toFixed(2) || '0.00'}</span>
+                                        <span>
+                                            {' '}
+                                            $
+                                            {typeof invoiceData.resumen.totalIva === 'number'
+                                                ? invoiceData.resumen.totalIva.toFixed(2)
+                                                : Array.isArray(invoiceData.resumen.tributos) && invoiceData.resumen.tributos[0]?.valor
+                                                  ? Number(invoiceData.resumen.tributos[0].valor).toFixed(2)
+                                                  : '0.00'}
+                                        </span>
                                     </div>
                                     <Separator />
                                     <div className="flex justify-between text-base font-bold sm:text-lg">
