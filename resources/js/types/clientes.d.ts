@@ -19,7 +19,7 @@ export interface ClienteRecord extends Customer {
 export interface Receiver {
     tipoDocumento?: string;
     numDocumento?: string;
-    nombre: string;
+    nombre?: string;
     nit?: string | null; // Añadido para CCF/NC
     nrc?: string | null; // Añadido para CCF/NC
     codActividad: string | null; // Añadido para CCF/NC

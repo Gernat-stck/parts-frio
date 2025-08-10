@@ -1,13 +1,11 @@
 import { buildCreditNotePayload, convertirNumeroALetras, convertToFormData, generateInvoiceData } from '@/helpers/generadores';
-import { mapProductToBodyDocument, normalizeNumericFields } from '@/helpers/map-helper';
-import { useDebounce } from '@/hooks/use-debounce';
 import { BodyDocument, CreditNotePayload, InvoicePayload } from '@/types/invoice';
-import { ProductData } from '@/types/products';
-import axios from 'axios';
-import { CheckCircle, Eye, Minus, Plus, Trash2, Zap } from 'lucide-react';
+import { router } from '@inertiajs/react';
+import { CheckCircle, Eye, Minus, Trash2, Zap } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { calculateResumeTotals } from '../../hooks/use-invoice';
 import ClientFormStep from '../client/client-form';
+import LoaderCute from '../loader/loader-page';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
@@ -19,6 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Textarea } from '../ui/textarea';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
+import ElectronicInvoicePreview from './dte-preview';
 import { TributosDialog } from './tributos-dialog';
 
 interface CreditNoteTabsProps {
@@ -29,12 +28,9 @@ export default function CreditNoteTabs({ invoice }: CreditNoteTabsProps) {
     const [formData, setFormData] = useState<CreditNotePayload | null>(null);
     const [activeTab, setActiveTab] = useState('related');
     const [errors, setErrors] = useState<Record<string, string>>({});
-    const [searchQuery, setSearchQuery] = useState('');
-    const [searchResults, setSearchResults] = useState<ProductData[]>([]);
-    const debouncedSearchQuery = useDebounce(searchQuery, 500);
     const [isTributosModalOpen, setIsTributosModalOpen] = useState(false);
     const [selectedItemIndex, setSelectedItemIndex] = useState<number | null>(null);
-
+    const [isLoading, setIsLoading] = useState<boolean>(false);
     useEffect(() => {
         if (invoice) {
             const initialFormData = generateInvoiceData({
@@ -59,43 +55,6 @@ export default function CreditNoteTabs({ invoice }: CreditNoteTabsProps) {
             setFormData(initialFormData);
         }
     }, [invoice]);
-    console.log(invoice);
-    useEffect(() => {
-        if (debouncedSearchQuery) {
-            axios
-                .get(route('items.search', { q: debouncedSearchQuery }))
-                .then((response) => {
-                    setSearchResults(response.data.data);
-                })
-                .catch((error) => {
-                    console.error('Error fetching search results:', error);
-                    setSearchResults([]);
-                });
-        } else {
-            setSearchResults([]);
-        }
-    }, [debouncedSearchQuery]);
-
-    const handleAddSearchedItem = (item: ProductData) => {
-        setFormData((prev) => {
-            if (!prev) return prev;
-
-            // Normalizar los campos numéricos del ítem antes de mapearlo
-            const normalizedItem = normalizeNumericFields(
-                [item],
-                ['cantidad', 'precioUni', 'montoDescu', 'ventaGravada', 'ventaNoSuj', 'ventaExenta', 'ivaItem', 'noGravado', 'price', 'psv'],
-            )[0];
-
-            const newBodyDocumentItem = mapProductToBodyDocument(normalizedItem, prev.cuerpoDocumento.length + 1);
-            return {
-                ...prev,
-                cuerpoDocumento: [...prev.cuerpoDocumento, newBodyDocumentItem],
-            };
-        });
-        setSearchQuery('');
-        setSearchResults([]);
-    };
-
     //Se esta utilizando en Receptor y Resumen
 
     const handleInputChange = (path: string, value: unknown) => {
@@ -216,7 +175,7 @@ export default function CreditNoteTabs({ invoice }: CreditNoteTabsProps) {
         if (!formData) return false;
 
         // Validate required fields
-        if (!formData.receptor.nombre.trim()) {
+        if (!formData?.receptor?.nombre?.trim()) {
             newErrors['receptor.nombre'] = 'El nombre del receptor es requerido';
         }
 
@@ -232,10 +191,6 @@ export default function CreditNoteTabs({ invoice }: CreditNoteTabsProps) {
             newErrors['receptor.direccion.complemento'] = 'La dirección completa es requerida';
         }
 
-        if (formData.cuerpoDocumento.length === 0) {
-            newErrors['cuerpoDocumento'] = 'Debe agregar al menos un ítem';
-        }
-
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -246,22 +201,19 @@ export default function CreditNoteTabs({ invoice }: CreditNoteTabsProps) {
         if (!formData || !validateForm()) {
             return;
         }
-
+        setIsLoading(true);
         try {
-            // Formatear los datos actualizados antes de enviar
             const formattedData = buildCreditNotePayload(formData);
-
             const formDataToSend = convertToFormData(formattedData);
-            console.log('Datos de la Nota de Crédito:', formattedData);
-            console.log('FormData para envío:', formDataToSend);
-            return;
-            // Here you would send the data to your API
-            // await submitCreditNote(formDataToSend);
-
-            alert('Nota de crédito generada exitosamente');
+            router.post(route('admin.save.invoice', { tipoDte: '05' }), formDataToSend, {
+                preserveScroll: true,
+                preserveState: true,
+            });
         } catch (error) {
             console.error('Error al generar la nota de crédito:', error);
             alert('Error al generar la nota de crédito');
+        } finally {
+            setIsLoading(false);
         }
     };
     const handleOpenTributosModal = (index: number) => {
@@ -294,7 +246,6 @@ export default function CreditNoteTabs({ invoice }: CreditNoteTabsProps) {
             return { ...prev, cuerpoDocumento: updatedItems };
         });
     };
-
     //Handler para remover tributo
     const handleRemoveTributo = (tributoValue: string) => {
         if (selectedItemIndex === null) return;
@@ -321,10 +272,12 @@ export default function CreditNoteTabs({ invoice }: CreditNoteTabsProps) {
             </div>
         );
     }
-
+    if (isLoading) {
+        return <LoaderCute description="Estamos validando informacion con hacienda, espera un momento." />;
+    }
     return (
-        <div className="mx-auto w-full max-w-7xl space-y-2 p-2">
-            <Card className="border-none shadow-lg">
+        <div className="mx-auto w-full max-w-7xl space-y-2">
+            <Card className="border-none shadow-none">
                 <CardHeader>
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div>
@@ -346,7 +299,7 @@ export default function CreditNoteTabs({ invoice }: CreditNoteTabsProps) {
                     </div>
                 </CardHeader>
 
-                <CardContent className="m-0 p-0">
+                <CardContent className="m-0 border-0 p-0 shadow-none">
                     <div className="grid grid-cols-1">
                         {/* Form Section */}
                         <div className="px-6 pb-6">
@@ -460,33 +413,6 @@ export default function CreditNoteTabs({ invoice }: CreditNoteTabsProps) {
 
                                     {/* Items Tab */}
                                     <TabsContent value="items" className="mt-3 space-y-2">
-                                        <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                                            <h3 className="text-lg font-semibold">Ítems del Documento</h3>
-
-                                            {/* Barra de búsqueda para nuevos ítems */}
-                                            <div className="relative w-full sm:w-1/2">
-                                                <Input
-                                                    type="text"
-                                                    placeholder="Buscar y seleccionar un ítem..."
-                                                    value={searchQuery}
-                                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                                />
-                                                {searchResults.length > 0 && (
-                                                    <ul className="absolute z-10 mt-1 max-h-[200px] w-full overflow-auto rounded-md border border-gray-200 bg-accent shadow-lg">
-                                                        {searchResults.map((item) => (
-                                                            <li
-                                                                key={item.id}
-                                                                className="cursor-pointer p-2"
-                                                                onClick={() => handleAddSearchedItem(item)}
-                                                            >
-                                                                {item.product_code} - {item.product_name} ($ {item.price})
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                )}
-                                            </div>
-                                        </div>
-
                                         {errors['cuerpoDocumento'] && <p className="mb-4 text-sm text-red-500">{errors['cuerpoDocumento']}</p>}
 
                                         <ScrollArea className="h-[40vh]">
@@ -536,6 +462,7 @@ export default function CreditNoteTabs({ invoice }: CreditNoteTabsProps) {
                                                                 <TableCell>
                                                                     <div className="flex items-center">
                                                                         <Button
+                                                                            type="button"
                                                                             variant="ghost"
                                                                             size="icon"
                                                                             className="size-6 p-1"
@@ -557,14 +484,6 @@ export default function CreditNoteTabs({ invoice }: CreditNoteTabsProps) {
                                                                             placeholder="0"
                                                                             className="w-[50px] [appearance:textfield] text-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                                                                         />
-                                                                        <Button
-                                                                            variant="ghost"
-                                                                            size="icon"
-                                                                            className="size-6 p-1"
-                                                                            onClick={() => handleItemChange(index, 'cantidad', item.cantidad + 1)}
-                                                                        >
-                                                                            <Plus className="h-4 w-4" />
-                                                                        </Button>
                                                                     </div>
                                                                 </TableCell>
                                                                 <TableCell className="text-right">
@@ -627,6 +546,7 @@ export default function CreditNoteTabs({ invoice }: CreditNoteTabsProps) {
                                                                             <Button
                                                                                 variant="ghost"
                                                                                 size="icon"
+                                                                                type="button"
                                                                                 onClick={() => handleOpenTributosModal(index)}
                                                                                 aria-label={`Ver y agregar tributos para el ítem ${item.numItem}`}
                                                                             >
@@ -640,6 +560,7 @@ export default function CreditNoteTabs({ invoice }: CreditNoteTabsProps) {
                                                                     <Button
                                                                         variant="ghost"
                                                                         size="icon"
+                                                                        type="button"
                                                                         onClick={() => handleRemoveItem(index)}
                                                                         aria-label={`Eliminar ítem ${item.numItem}`}
                                                                     >
@@ -693,7 +614,10 @@ export default function CreditNoteTabs({ invoice }: CreditNoteTabsProps) {
                                     </TabsContent>
 
                                     <TabsContent value="preview" className="mt-3 space-y-2">
-                                        {/* Aqui se mostrara el preview */}
+                                        <ScrollArea className="h-[46vh]">
+                                            {/* Aqui se mostrara el preview */}
+                                            <ElectronicInvoicePreview />
+                                        </ScrollArea>
                                     </TabsContent>
                                 </Tabs>
 

@@ -389,7 +389,7 @@ class AdminController extends Controller
             $sales = $this->invoiceService->storeDte($normalized, $responseArray);
 
             Log::info("Venta finalizada y registrada para código de generación: " . ($sales->codigoGeneracion ?? 'N/A'));
-            return redirect()->route('admin.sales')->with('success', 'Venta Finalizada y DTE procesado.');
+            return redirect()->back()->with('success', 'Venta Finalizada y DTE procesado.');
         } catch (Throwable $e) {
             Log::error("Error al guardar factura: " . $e->getMessage(), ['request_data' => $normalized]);
             return redirect()->back()->with('error', $e->getMessage());
@@ -464,44 +464,44 @@ class AdminController extends Controller
     public function createContingecyEvent(HttpRequest $request): \Inertia\Response | \Illuminate\Http\RedirectResponse
     {
         try {
-            // Validar si es credito fiscal, factura, nota de credito y obtener la URL del esquema
-            $schemaUrl = $this->invoiceService->getSchemaUrl('contingencia');
-            // Normalizar valores tipo string 'null', 'true', 'false'
-            $rawInput = $request->all();
-            // Leer y aplicar normalizador basado en el esquema JSON
-            $schemaPath = storage_path($schemaUrl);
-            if (!file_exists($schemaPath)) {
-                Log::error("Esquema no encontrado para contingencia en {$schemaPath}");
-                return redirect()->back()->with('error', 'Error de configuración: Esquema DTE no encontrado.');
-            }
-            $schema = json_decode(file_get_contents($schemaPath));
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                Log::error("Error al decodificar esquema JSON para contingencia: " . json_last_error_msg());
-                return redirect()->back()->with('error', 'Error de configuración: Esquema DTE inválido.');
-            }
+            // // Validar si es credito fiscal, factura, nota de credito y obtener la URL del esquema
+            // $schemaUrl = $this->invoiceService->getSchemaUrl('contingencia');
+            // // Normalizar valores tipo string 'null', 'true', 'false'
+            // $rawInput = $request->all();
+            // // Leer y aplicar normalizador basado en el esquema JSON
+            // $schemaPath = storage_path($schemaUrl);
+            // if (!file_exists($schemaPath)) {
+            //     Log::error("Esquema no encontrado para contingencia en {$schemaPath}");
+            //     return redirect()->back()->with('error', 'Error de configuración: Esquema DTE no encontrado.');
+            // }
+            // $schema = json_decode(file_get_contents($schemaPath));
+            // if (json_last_error() !== JSON_ERROR_NONE) {
+            //     Log::error("Error al decodificar esquema JSON para contingencia: " . json_last_error_msg());
+            //     return redirect()->back()->with('error', 'Error de configuración: Esquema DTE inválido.');
+            // }
 
-            $normalizer = new SchemaAwareNormalizer();
-            $normalized = $normalizer->normalize($rawInput, $schema);
-            Log::info('Payload de contingencia normalizado:', $normalized);
-            // Validar estructura con Opis  
-            $schemaResult = $this->invoiceService->validateWithOpis($normalized, true);
+            // $normalizer = new SchemaAwareNormalizer();
+            // $normalized = $normalizer->normalize($rawInput, $schema);
+            // Log::info('Payload de contingencia normalizado:', $normalized);
+            // // Validar estructura con Opis  
+            // $schemaResult = $this->invoiceService->validateWithOpis($normalized, true);
 
-            if ($schemaResult['estado'] === 'error') {
-                Log::warning('❌ Validación Opis fallida:', ['errores' => $schemaResult['errores'], 'payload' => $normalized]);
-                return redirect()->back()->with('error', 'Error con el formato de datos enviado, contacte con soporte técnico.');
-            }
+            // if ($schemaResult['estado'] === 'error') {
+            //     Log::warning('❌ Validación Opis fallida:', ['errores' => $schemaResult['errores'], 'payload' => $normalized]);
+            //     return redirect()->back()->with('error', 'Error con el formato de datos enviado, contacte con soporte técnico.');
+            // }
 
-            // Enviar a API de Hacienda (simulado)
-            $response = $this->invoiceService->sendToHaciendaApi($normalized, true);
+            // // Enviar a API de Hacienda (simulado)
+            // $response = $this->invoiceService->sendToHaciendaApi($normalized, true);
 
-            if ($response['estado'] === 'rechazado') {
-                Log::warning('🚫 DTE rechazado por Hacienda (simulado):', $response);
-                // Aquí podrías guardar el estado como 'rechazada' en el historial si es necesario
-                // $response['estado'] = 'rechazada';
-            }
+            // if ($response['estado'] === 'rechazado') {
+            //     Log::warning('🚫 DTE rechazado por Hacienda (simulado):', $response);
+            //     // Aquí podrías guardar el estado como 'rechazada' en el historial si es necesario
+            //     // $response['estado'] = 'rechazada';
+            // }
 
-            // Guardar venta (incluye el sello de recibido de hacienda si aplica)
-            //  $sales = $this->invoiceService->storeDte($normalized, $response);
+            // // Guardar venta (incluye el sello de recibido de hacienda si aplica)
+            // //  $sales = $this->invoiceService->storeDte($normalized, $response);
 
             Log::info("Evento de contingencia finalizado con exito: " . ($sales->codigoGeneracion ?? 'N/A'));
             return redirect()->route('admin.sales.history')->with('success', 'Evento de contingencia finalizado.');
@@ -531,24 +531,6 @@ class AdminController extends Controller
         } catch (Throwable $e) {
             Log::error("Error al cargar la página de creación de nota de crédito: " . $e->getMessage());
             return redirect()->back()->with('error', 'No se pudieron cargar los datos en este momento.');
-        }
-    }
-    /**
-     * Create Nota de Credito based on an existing invoice.
-     * @param string $codigoGeneracion The generation code of the original invoice.
-     * @return \Inertia\Response | \Illuminate\Http\RedirectResponse
-     */
-    public function createNotaCredito(string $codigoGeneracion): \Inertia\Response | \Illuminate\Http\RedirectResponse
-    {
-        try {
-            // Lógica para crear la nota de crédito basada en la factura original
-            $notaCredito = $this->invoiceService->createNotaCredito($codigoGeneracion);
-            return Inertia::render('admin/sales/nota-credito', [
-                'notaCredito' => $notaCredito,
-            ]);
-        } catch (Throwable $e) {
-            Log::error("Error al crear nota de crédito: " . $e->getMessage());
-            return redirect()->back()->with('error', 'Error al crear nota de crédito.');
         }
     }
 

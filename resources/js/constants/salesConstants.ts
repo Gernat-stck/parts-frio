@@ -46,7 +46,6 @@ export const CONTINGENCY_TYPES: options[] = [
 export const DTE_TYPES: options[] = [
     { value: '01', label: 'Factura Consumidor Final' },
     { value: '03', label: 'Crédito Fiscal' },
-    { value: '05', label: 'Ticket Simplificado' },
 ];
 export type DteTypeValue = (typeof DTE_TYPES)[number]['value'];
 

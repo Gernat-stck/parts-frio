@@ -27,8 +27,7 @@ const camposOmitidos: (keyof ID)[] = [
     'horEmi',
     'tipoMoneda',
 ];
-// Función auxiliar para calcular el resumen de los tributos
-// Función auxiliar para construir el objeto de tributos para el resumen
+
 const buildResumenTributos = (totalIva: number): Tributos[] | null => {
     if (totalIva > 0) {
         return [
@@ -170,25 +169,55 @@ export const convertirNumeroALetras = (numero: number): string => {
 };
 
 // Función para formatear un número a dos decimales
-const formatNumber = (num: number): number => {
-    return Number(num.toFixed(2));
+const formatNumber = (num: number, dec?: number): number => {
+    return Number(num.toFixed(dec || 2));
 };
 export function calculatedTotalsForResume(cartItems: CartItem[]) {
     return cartItems.reduce(
         (acc, item) => {
+            const iva = item.price - item.price / 1.13;
             const totalPrice = item.price * item.quantity;
-            const baseAmount = totalPrice / 1.13;
-            const ivaAmount = totalPrice - baseAmount;
+            const baseAmount = (item.price - item.ivaItem) * item.quantity;
+            const ivaAmount = iva * item.quantity;
 
             acc.subtotal += baseAmount;
             acc.iva += ivaAmount;
             acc.total += totalPrice;
-            acc.baseAmount = baseAmount;
+            acc.baseAmount += baseAmount;
 
             return acc;
         },
         { subtotal: 0, iva: 0, total: 0, baseAmount: 0 },
     );
+}
+/**
+ * Obtener la fecha y hora en la zona horaria de El Salvador (UTC-6) de forma robusta
+ * @returns
+ */
+export function getDateTime() {
+    const elSalvadorFormatter = new Intl.DateTimeFormat('sv-SV', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+        timeZone: 'America/El_Salvador',
+    });
+
+    const parts = elSalvadorFormatter.formatToParts(new Date());
+    const year = parts.find((p) => p.type === 'year')?.value;
+    const month = parts.find((p) => p.type === 'month')?.value;
+    const day = parts.find((p) => p.type === 'day')?.value;
+    const hour = parts.find((p) => p.type === 'hour')?.value;
+    const minute = parts.find((p) => p.type === 'minute')?.value;
+    const second = parts.find((p) => p.type === 'second')?.value;
+
+    const fecEmi = `${year}-${month}-${day}`;
+    const horEmi = `${hour}:${minute}:${second}`;
+
+    return { fecEmi, horEmi };
 }
 /**
  * Construye el payload para la generacion de Factura consumidor final, nota de credito y credito fiscal
@@ -219,28 +248,10 @@ export function generateInvoiceData({
     calculatedTotals.iva = formatNumber(calculatedTotals.iva);
     calculatedTotals.total = formatNumber(calculatedTotals.total);
     calculatedTotals.baseAmount = formatNumber(calculatedTotals.baseAmount);
-    // Obtener la fecha y hora en la zona horaria de El Salvador (UTC-6) de forma robusta
-    const elSalvadorFormatter = new Intl.DateTimeFormat('sv-SV', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false,
-        timeZone: 'America/El_Salvador',
-    });
 
-    const parts = elSalvadorFormatter.formatToParts(new Date());
-    const year = parts.find((p) => p.type === 'year')?.value;
-    const month = parts.find((p) => p.type === 'month')?.value;
-    const day = parts.find((p) => p.type === 'day')?.value;
-    const hour = parts.find((p) => p.type === 'hour')?.value;
-    const minute = parts.find((p) => p.type === 'minute')?.value;
-    const second = parts.find((p) => p.type === 'second')?.value;
-
-    const fecEmi = `${year}-${month}-${day}`;
-    const horEmi = `${hour}:${minute}:${second}`;
+    const dateTime = getDateTime();
+    const fecEmi = dateTime.fecEmi;
+    const horEmi = dateTime.horEmi;
 
     const codigoGeneracion = generarCodigoGeneracion();
     const numeroControl = generarNumeroControl(dteType);
@@ -261,16 +272,18 @@ export function generateInvoiceData({
             : cartItems.map((item, index) => {
                   // Precios sin IVA
                   const tributos = ['20'];
+                  const iva = item.price - item.price / 1.13;
 
                   // Calcular los totales del ítem
                   const totalItemPriceWithIva = formatNumber(item.quantity * item.price);
-                  const baseAmount = item.price / 1.13;
-                  const totalItemIva = formatNumber(item.ivaItem * item.quantity);
+                  const baseAmount = item.price - iva;
+                  const totalItemIva = formatNumber(iva * item.quantity);
                   const totalItemPriceWithoutIva = formatNumber(item.quantity * baseAmount);
 
                   // Se utilizan los valores ya calculados
                   const montoDescu = formatNumber(item.montoDescu || 0);
-
+                  console.log('Precio sin iva', totalItemPriceWithoutIva);
+                  console.log('precio base', baseAmount);
                   const baseItem = {
                       numItem: index + 1,
                       tipoItem: formatNumber(item.tipo_item || 1),
@@ -278,7 +291,7 @@ export function generateInvoiceData({
                       descripcion: item.description,
                       cantidad: formatNumber(item.quantity),
                       uniMedida: formatNumber(item.uniMedida || 99),
-                      precioUni: isFiscal ? formatNumber(baseAmount) : formatNumber(item.price), // Precio por unidad sin IVA
+                      precioUni: isFiscal ? formatNumber(baseAmount, 3) : formatNumber(item.price), // Precio por unidad sin IVA
                       montoDescu,
                       ventaNoSuj: formatNumber(item.ventaNoSuj || 0),
                       ventaExenta: formatNumber(item.ventaExenta || 0),
@@ -305,7 +318,6 @@ export function generateInvoiceData({
             total: calculatedTotals.total,
             iva: calculatedTotals.iva,
             cartItems,
-            cuerpoDocumento: isNotaCredito ? cuerpoDocumento : null,
             convertirNumeroALetras,
             paymentData,
             baseAmount: calculatedTotals.baseAmount,
@@ -326,8 +338,8 @@ export function generateInvoiceData({
  * @returns Un objeto que representa el payload de la Nota de Crédito (DTE 05) validado.
  */
 export function buildCreditNotePayload(data: CreditNotePayload): CreditNotePayload {
-    const now = new Date();
-
+    const numeroDocumento = data?.documentoRelacionado?.[0]?.numeroDocumento;
+    const date = getDateTime();
     // 1. Emisor: Se seleccionan solo los campos requeridos por el esquema
     const emisor: Emitter = {
         nit: EMITTER_BASE.nit,
@@ -349,13 +361,13 @@ export function buildCreditNotePayload(data: CreditNotePayload): CreditNotePaylo
     // 2. Cuerpo del Documento: Se eliminan los campos 'psv' y 'noGravado'
     const cuerpoDocumento: BodyDocument[] = data.cuerpoDocumento.map((item) => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { psv, noGravado, ...rest } = item;
+        const { psv, noGravado, ivaItem, ...rest } = item;
         const tributos = item.ventaGravada > 0 ? item.tributos : null;
 
         return {
             ...rest,
             tributos,
-            numeroDocumento: item.numeroDocumento,
+            numeroDocumento: numeroDocumento || null,
             codTributo: item.codTributo,
         };
     });
@@ -370,14 +382,13 @@ export function buildCreditNotePayload(data: CreditNotePayload): CreditNotePaylo
         descuExenta: data.resumen.descuExenta,
         descuGravada: data.resumen.descuGravada,
         totalDescu: data.resumen.totalDescu,
-        // **CORRECCIÓN:** Se calcula y añade el array de tributos al resumen
         tributos: buildResumenTributos(data.resumen.totalIva || 0),
         subTotal: data.resumen.subTotal,
         ivaPerci1: data.resumen.ivaPerci1 || 0,
         ivaRete1: data.resumen.ivaRete1 || 0,
         reteRenta: data.resumen.reteRenta || 0,
         montoTotalOperacion: data.resumen.montoTotalOperacion,
-        totalLetras: data.resumen.totalLetras || convertirNumeroALetras(data.resumen.montoTotalOperacion),
+        totalLetras: convertirNumeroALetras(data.resumen.montoTotalOperacion),
         condicionOperacion: data.resumen.condicionOperacion,
     };
 
@@ -393,8 +404,8 @@ export function buildCreditNotePayload(data: CreditNotePayload): CreditNotePaylo
             tipoOperacion: 1,
             tipoContingencia: null,
             motivoContin: null,
-            fecEmi: now.toISOString().split('T')[0],
-            horEmi: now.toTimeString().split(' ')[0].substring(0, 8),
+            fecEmi: date.fecEmi,
+            horEmi: date.horEmi,
             tipoMoneda: 'USD',
         },
         documentoRelacionado: data.documentoRelacionado,

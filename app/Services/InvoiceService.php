@@ -30,7 +30,7 @@ class InvoiceService
                 break;
 
             case '05':
-                $schemaUrl = 'app/private/schemas/fe-nc-v1.json';
+                $schemaUrl = 'app/private/schemas/fe-nc-v3.json';
                 break;
 
             case 'contingencia':
@@ -54,25 +54,37 @@ class InvoiceService
      */
     public function storeDte(array $payload, array $response): SalesHistory
     {
+
         return DB::transaction(function () use ($payload, $response) {
+            $tipoDte = $payload['identificacion']['tipoDte'] ?? null;
+
+            // Accede al monto de forma condicional
+            $monto = 0.0;
+            if ($tipoDte === '05') {
+                // Si es una Nota de Crédito (05), usa 'montoTotalOperacion'
+                $monto = $payload['resumen']['montoTotalOperacion'] ?? 0.0;
+            } else {
+                // Para otros tipos de DTE, usa 'totalPagar'
+                $monto = $payload['resumen']['totalPagar'] ?? 0.0;
+            }
             // Extraer datos del receptor
             Log::info('sello recibido' . $response['selloRecibido']);
-            Log::info('monto: ' . $payload['resumen']['totalPagar']);
+            Log::info('monto: ' . $monto);
             $receptorData = $payload['receptor'] ?? [];
             Log::info($response);
             // Preparar datos para crear/buscar receptor
             $receiverAttributes = [
-                'nit' => $receptorData['nit'] ?? $receptorData['numDocumento'],
-                'nrc' => $receptorData['nrc'] ?? $receptorData['numDocumento'], // Considerar si 'numDocumento' es un buen fallback para NRC en producción
+                'nit' => $receptorData['nit'] ?? $receptorData['numDocumento'] ?? 'No Proporcionado',
+                'nrc' => $receptorData['nrc'] ?? $receptorData['numDocumento'] ?? 'No Proporcionado',
                 'nombre' => $receptorData['nombre'],
-                'codActividad' => $receptorData['codActividad'] ?? '99', // Default '99' si no existe
-                'descActividad' => $receptorData['descActividad'] ?? '99', // Default '99' si no existe
+                'codActividad' => $receptorData['codActividad'] ?? '99',
+                'descActividad' => $receptorData['descActividad'] ?? '99',
                 'nombreComercial' => $receptorData['nombreComercial'] ?? $receptorData['nombre'], // Usa nombreComercial si existe, sino nombre
                 'departamento' => $receptorData['direccion']['departamento'] ?? null,
                 'municipio' => $receptorData['direccion']['municipio'] ?? null,
                 'complemento' => $receptorData['direccion']['complemento'] ?? null,
-                'telefono' => $receptorData['telefono'] ?? null,
-                'correo' => $receptorData['correo'] ?? null,
+                'telefono' => $receptorData['telefono'] ?? 'No Proporcionado',
+                'correo' => $receptorData['correo'] ?? 'No Proporcionado',
             ];
 
             try {
@@ -96,7 +108,7 @@ class InvoiceService
                     'horaEmi'           => $payload['identificacion']['horEmi'] ?? null, //🆗
                     'fechaEmi'          => $payload['identificacion']['fecEmi'] ?? null, //🆗
                     'nitReceiver'       => $receiver->nit, //🆗
-                    'monto'             => $payload['resumen']['totalPagar'] ?? 0.0, //🆗
+                    'monto'             => $monto, //🆗
                     'estado'            => $response['estado'] ?? 'pendiente', // Usar estado de la respuesta o 'pendiente'//🆗
                     'sello_recibido'    => $response['selloRecibido'] ?? null, //🆗
                     'json_enviado'      => $payload,

@@ -10,8 +10,7 @@ import { ProductData } from '../types/products';
  * @returns El objeto BodyDocument transformado.
  */
 export function mapProductToBodyDocument(product: ProductData, numItem: number): BodyDocument {
-    console.log(product);
-    const ventaGravada = (product.cantidad || 1) * product.price;
+    const ventaGravada = ((product.cantidad || 1) * (product.price / 1.13)).toFixed(2);
     return {
         numItem: numItem,
         tipoItem: product.tipo_item,
@@ -23,8 +22,8 @@ export function mapProductToBodyDocument(product: ProductData, numItem: number):
         montoDescu: product.montoDescu || 0,
         ventaNoSuj: product.ventaNoSuj || 0,
         ventaExenta: product.ventaExenta || 0,
-        ventaGravada: product.ventaGravada || ventaGravada,
-        tributos: null,
+        ventaGravada: Number(product.ventaGravada) || Number(ventaGravada),
+        tributos: ['20'],
         psv: product.psv || 0,
         noGravado: product.noGravado || 0,
         ivaItem: product.ivaItem,

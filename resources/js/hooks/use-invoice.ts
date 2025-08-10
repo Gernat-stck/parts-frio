@@ -8,9 +8,7 @@ export function buildResumen({
     cartItems,
     convertirNumeroALetras,
     paymentData,
-    cuerpoDocumento,
     baseAmount,
-    resumenFNc
 }: {
     documentType: '01' | '03' | '05';
     subtotal: number;
@@ -21,15 +19,9 @@ export function buildResumen({
     convertirNumeroALetras: (n: number) => string;
     paymentData: Payment;
     baseAmount: number;
-    resumenFNc: Resumen | null
+    resumenFNc: Resumen | null;
 }) {
-      if (resumenFNc) {
-          return resumenFNc;
-      }
-
     const isFiscal = documentType === '03';
-    const isNotaCredito = documentType === '05';
-    const carrito = isNotaCredito ? cuerpoDocumento : cartItems;
     const resumen: Resumen = {
         totalNoSuj: 0.0,
         totalExenta: 0.0,
@@ -39,7 +31,7 @@ export function buildResumen({
         descuExenta: 0.0,
         descuGravada: 0.0,
         porcentajeDescuento: 0.0,
-        totalDescu: Number(carrito?.reduce((total, item) => total + (item.montoDescu || 0), 0).toFixed(2)),
+        totalDescu: Number(cartItems?.reduce((total, item) => total + (item.montoDescu || 0), 0).toFixed(2)),
         subTotal: isFiscal ? Number(baseAmount.toFixed(2)) : Number(subtotal.toFixed(2)),
         montoTotalOperacion: Number(total.toFixed(2)),
         totalNoGravado: 0.0,
@@ -76,8 +68,6 @@ export function buildResumen({
 
     return resumen;
 }
-
-
 /**
  * Calcula los totales para el resumen de una nota de crédito
  * basándose en los ítems del cuerpo del documento.
@@ -86,42 +76,54 @@ export function buildResumen({
  * @returns Un objeto con los totales calculados y formateados.
  */
 export const calculateResumeTotals = (cuerpoDocumento: BodyDocument[]) => {
-    // Inicializar los acumuladores
-    const totals = {
-        totalGravada: 0,
-        subTotalVentas: 0,
-        totalIva: 0,
-        totalDescu: 0,
-        total: 0,
-    };
+    // Inicializar los acumuladores con precisión decimal
+    let totalGravada = 0;
+    let subTotalVentas = 0;
+    let totalDescu = 0;
 
-    // Iterar sobre cada ítem en el cuerpo del documento
-    cuerpoDocumento.forEach(item => {
-        // Asegurarse de que los valores sean numéricos y manejar posibles nulos o undefined
+    // Iterar sobre cada ítem para acumular los totales
+    cuerpoDocumento.forEach((item) => {
+        // Asegurarse de que los valores sean numéricos
         const ventaGravada = parseFloat(item.ventaGravada as unknown as string) || 0;
         const montoDescu = parseFloat(item.montoDescu as unknown as string) || 0;
         const precioUni = parseFloat(item.precioUni as unknown as string) || 0;
         const cantidad = parseFloat(item.cantidad as unknown as string) || 0;
-
-        // Calcular el IVA y los demás totales
-        const subtotalSinDescuento = precioUni * cantidad;
-        const ivaItem = (subtotalSinDescuento - montoDescu) * 0.13; // 13% de IVA
-
-        totals.totalGravada += ventaGravada;
-        totals.subTotalVentas += subtotalSinDescuento;
-        totals.totalDescu += montoDescu;
-        totals.totalIva += ivaItem;
+        // Acumular la venta gravada del ítem sin restarle el descuento
+        totalGravada += ventaGravada;
+        // Acumular el subtotal de las ventas (precio * cantidad) sin el descuento
+        subTotalVentas += precioUni * cantidad;
+        // Acumular el total de descuentos de todos los ítems
+        totalDescu += montoDescu;
+        // Calcular el IVA del ítem basado en la venta gravada (después de descuento)
+        // Se utiliza el impuesto del 13% para el IVA
     });
 
-    // Calcular el total final
-    totals.total = totals.subTotalVentas + totals.totalIva - totals.totalDescu;
+    // Redondear los valores acumulados al final
+    const finalTotalGravada = parseFloat(totalGravada.toFixed(2));
+    const finalSubTotalVentas = parseFloat(subTotalVentas.toFixed(2));
+    const finalTotalDescu = parseFloat(totalDescu.toFixed(2));
 
-    // Retornar los totales formateados a dos decimales para precisión
+    // Calcular los totales finales del resumen
+    const subTotal = finalSubTotalVentas - finalTotalDescu;
+    const montoTotalOperacion = (subTotal * 13) / 100;
+    const totalPagar = montoTotalOperacion;
+
+    // Retornar el objeto con todos los valores formateados
     return {
-        totalGravada: parseFloat(totals.totalGravada.toFixed(2)),
-        subTotalVentas: parseFloat(totals.subTotalVentas.toFixed(2)),
-        totalIva: parseFloat(totals.totalIva.toFixed(2)),
-        totalDescu: parseFloat(totals.totalDescu.toFixed(2)),
-        total: parseFloat(totals.total.toFixed(2)),
+        totalGravada: finalTotalGravada,
+        subTotalVentas: subTotal,
+        totalIva: (subTotal * 13) / 100,
+        totalDescu: finalTotalDescu,
+        total: finalTotalGravada,
+        totalPagar: totalPagar,
+        montoTotalOperacion: finalTotalGravada,
+        subTotal: subTotal,
+        tributos: [
+            {
+                codigo: '20',
+                descripcion: 'Impuesto al Valor Agregado',
+                valor: (subTotal * 13) / 100,
+            },
+        ],
     };
 };

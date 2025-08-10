@@ -111,7 +111,7 @@ export interface BodyDocument {
     psv?: number;
     noGravado?: number;
     ivaItem?: number;
-    numeroDocumento: null;
+    numeroDocumento:string | null;
     codTributo?: null;
 }
 interface Tributos {

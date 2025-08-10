@@ -157,7 +157,7 @@ export default function ProductForm(props: {
                             <DecimalField
                                 id="price"
                                 label="Precio con IVA *"
-                                value={Number.parseFloat(form.price.toFixed(2))}
+                                value={Number.parseFloat(Number(form.price).toFixed(2))}
                                 setValue={(val) => setField('price', val)}
                                 error={errors.price}
                                 prefix="$"

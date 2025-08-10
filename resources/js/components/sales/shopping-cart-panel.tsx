@@ -1,11 +1,11 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'; // Importa Select
-import { DTE_TYPES, type DteTypeValue } from '@/constants/salesConstants' // Importa las constantes y el tipo
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DTE_TYPES, type DteTypeValue } from '@/constants/salesConstants' 
 import type { Product } from '@/types/products';
 import { Minus, Plus, Receipt, ShoppingCart, Trash2, X } from 'lucide-react';
-import { useState } from 'react'; // Importa useState
-import NoData from '../187443387_10810386.png'; // Asegúrate de que esta ruta es correcta
+import { useState } from 'react';
+import NoData from '../187443387_10810386.png';
 import { ScrollArea } from '../ui/scroll-area';
 
 interface CartItem extends Product {
@@ -20,7 +20,6 @@ interface ShoppingCartPanelProps {
     updateQuantity: (productId: number, newQuantity: number) => void;
     removeItem: (productId: number) => void;
     clearCart: () => void;
-    // Modificamos handleCheckout para que pueda recibir el tipo de DTE
     handleCheckout: (dteType: DteTypeValue) => void;
 }
 

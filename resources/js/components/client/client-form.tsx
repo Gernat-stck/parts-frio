@@ -29,25 +29,20 @@ function convertEmptyStringsToNull<T>(obj: T): T {
 
 // Schema base para todos los documentos
 const baseReceiverSchema = z.object({
-    tipoDocumento: z.string().min(1, 'Tipo de documento es requerido').optional(),
-    numDocumento: z.string().min(1, 'Número de documento es requerido').optional(),
+    tipoDocumento: z.string().nullable().optional(),
+    numDocumento: z.string().nullable().optional(),
     nombre: z.string().min(1, 'Nombre es requerido'),
     direccion: z.object({
         departamento: z.string().min(1, 'Departamento es requerido'),
         municipio: z.string().min(1, 'Municipio es requerido'),
         complemento: z.string().min(1, 'Dirección completa es requerida'),
     }),
-    telefono: z
-        .string()
-        .min(1, 'Teléfono es requerido')
-        .regex(/^\d{4}-?\d{4}$/, 'Formato de teléfono inválido (ej: 7123-4567)'),
-    correo: z.email('Formato de correo inválido').optional().or(z.literal('')),
+    telefono: z.string().nullable().optional(),
+    correo: z.email('Formato de correo inválido').nullable().optional().or(z.literal('')),
 });
 
 // Schema para documentos fiscales (CCF/NC)
 const fiscalReceiverSchema = z.object({
-    // tipoDocumento: z.string().min(1, 'Tipo de documento es requerido').optional(),
-    // numDocumento: z.string().min(1, 'Número de documento es requerido').optional(),
     nombre: z.string().min(1, 'Nombre es requerido'),
     nit: z.string().min(1, 'NIT es requerido para documentos fiscales'),
     nrc: z
@@ -169,7 +164,7 @@ export default function ClientFormStep({ data, setData, onNext, onPrev, document
                             <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
                                 <div className="space-y-2">
                                     <Label htmlFor="tipoDocumento" className="text-sm font-medium">
-                                        Tipo de Documento *
+                                        Tipo de Documento 
                                     </Label>
                                     <Select value={data.tipoDocumento} onValueChange={(value) => updateData('tipoDocumento', value)}>
                                         <SelectTrigger>
@@ -188,7 +183,7 @@ export default function ClientFormStep({ data, setData, onNext, onPrev, document
 
                                 <div className="space-y-2">
                                     <Label htmlFor="numDocumento" className="text-sm font-medium">
-                                        Número de Documento *
+                                        Número de Documento 
                                     </Label>
                                     <Input
                                         id="numDocumento"
@@ -206,7 +201,7 @@ export default function ClientFormStep({ data, setData, onNext, onPrev, document
                             <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
                                 <div className="space-y-2">
                                     <Label htmlFor="nit" className="text-sm font-medium">
-                                        NIT * (14 dígitos)
+                                        NIT  (14 dígitos)
                                     </Label>
                                     <Input
                                         id="nit"
@@ -221,7 +216,7 @@ export default function ClientFormStep({ data, setData, onNext, onPrev, document
 
                                 <div className="space-y-2">
                                     <Label htmlFor="nrc" className="text-sm font-medium">
-                                        NRC *
+                                        NRC 
                                     </Label>
                                     <Input
                                         id="nrc"
@@ -237,7 +232,7 @@ export default function ClientFormStep({ data, setData, onNext, onPrev, document
                         )}
                         <div className="space-y-2">
                             <Label htmlFor="nombre" className="text-sm font-medium">
-                                Nombre Completo *
+                                Nombre Completo 
                             </Label>
                             <Input
                                 id="nombre"
@@ -253,7 +248,7 @@ export default function ClientFormStep({ data, setData, onNext, onPrev, document
                             <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
                                 <div className="space-y-2">
                                     <Label htmlFor="nombreComercial" className="text-sm font-medium">
-                                        Nombre Comercial *
+                                        Nombre Comercial 
                                     </Label>
                                     <Input
                                         id="nombreComercial"
@@ -288,7 +283,7 @@ export default function ClientFormStep({ data, setData, onNext, onPrev, document
                             <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
                                 <div className="space-y-2">
                                     <Label htmlFor="departamento" className="text-sm font-medium">
-                                        Departamento *
+                                        Departamento 
                                     </Label>
                                     <Select
                                         value={data.direccion.departamento}
@@ -311,7 +306,7 @@ export default function ClientFormStep({ data, setData, onNext, onPrev, document
 
                                 <div className="space-y-2">
                                     <Label htmlFor="municipio" className="text-sm font-medium">
-                                        Municipio *
+                                        Municipio 
                                     </Label>
                                     <Select
                                         value={data.direccion.municipio}
@@ -336,7 +331,7 @@ export default function ClientFormStep({ data, setData, onNext, onPrev, document
 
                             <div className="space-y-2">
                                 <Label htmlFor="complemento" className="text-sm font-medium">
-                                    Dirección Completa *
+                                    Dirección Completa 
                                 </Label>
                                 <Input
                                     id="complemento"
@@ -352,7 +347,7 @@ export default function ClientFormStep({ data, setData, onNext, onPrev, document
                         <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
                             <div className="space-y-2">
                                 <Label htmlFor="telefono" className="text-sm font-medium">
-                                    Teléfono * (formato: 12345678)
+                                    Teléfono  (formato: 12345678)
                                 </Label>
                                 <Input
                                     id="telefono"
