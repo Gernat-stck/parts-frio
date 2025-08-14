@@ -1,22 +1,13 @@
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { useAppearance } from '@/hooks/use-appearance';
-import { Monitor, Moon, Sun } from 'lucide-react';
-import { HTMLAttributes } from 'react';
+import type { HTMLAttributes } from 'react';
+import { THEME_DESCRIPTIONS, THEME_ICONS, THEMES } from '../constants/themeConstants';
+import { useAppearance } from '../hooks/use-appearance';
 
 export default function AppearanceToggleDropdown({ className = '', ...props }: HTMLAttributes<HTMLDivElement>) {
     const { appearance, updateAppearance } = useAppearance();
 
-    const getCurrentIcon = () => {
-        switch (appearance) {
-            case 'dark':
-                return <Moon className="h-5 w-5" />;
-            case 'light':
-                return <Sun className="h-5 w-5" />;
-            default:
-                return <Monitor className="h-5 w-5" />;
-        }
-    };
+    const getCurrentIcon = () => THEME_ICONS[appearance] ?? THEME_ICONS['system'];
 
     return (
         <div className={className} {...props}>
@@ -27,25 +18,19 @@ export default function AppearanceToggleDropdown({ className = '', ...props }: H
                         <span className="sr-only">Toggle theme</span>
                     </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => updateAppearance('light')}>
-                        <span className="flex items-center gap-2">
-                            <Sun className="h-5 w-5" />
-                            Light
-                        </span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => updateAppearance('dark')}>
-                        <span className="flex items-center gap-2">
-                            <Moon className="h-5 w-5" />
-                            Dark
-                        </span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => updateAppearance('system')}>
-                        <span className="flex items-center gap-2">
-                            <Monitor className="h-5 w-5" />
-                            System
-                        </span>
-                    </DropdownMenuItem>
+                <DropdownMenuContent align="end" className="w-56">
+                    {THEMES.map((theme) => (
+                        <DropdownMenuItem key={theme} onClick={() => updateAppearance(theme)} className="flex items-center justify-between">
+                            <span className="flex items-center gap-2">
+                                {THEME_ICONS[theme]}
+                                <div className="flex flex-col">
+                                    <span className="capitalize">{theme}</span>
+                                    <span className="text-muted-foreground text-xs">{THEME_DESCRIPTIONS[theme]}</span>
+                                </div>
+                            </span>
+                            {appearance === theme && <div className="bg-primary h-2 w-2 rounded-full" />}
+                        </DropdownMenuItem>
+                    ))}
                 </DropdownMenuContent>
             </DropdownMenu>
         </div>

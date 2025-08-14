@@ -7,6 +7,7 @@ import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { TableCell, TableRow } from '../ui/table';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 interface ClienteRowProps {
     cliente: Cliente;
@@ -95,11 +96,26 @@ export default function ClienteRow({ cliente, onVerHistorial, isMobile = false }
                 <span className="font-mono text-sm break-all">{cliente.document}</span>
             </TableCell>
             <TableCell>
-                <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span className="break-all">{cliente.email}</span>
-                </div>
+                {cliente.email.length > 24 ? (
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <div className="flex cursor-default items-center gap-2">
+                                    <Mail className="h-4 w-4 text-muted-foreground" />
+                                    <span className="max-w-[150px] truncate overflow-hidden break-all">{cliente.email}</span>
+                                </div>
+                            </TooltipTrigger>
+                            <TooltipContent>{cliente.email}</TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                ) : (
+                    <div className="flex items-center gap-2">
+                        <Mail className="h-4 w-4 text-muted-foreground" />
+                        <span className="break-all">{cliente.email}</span>
+                    </div>
+                )}
             </TableCell>
+
             <TableCell>
                 <Badge variant="secondary" className="text-xs">
                     <CreditCard className="mr-1 h-3 w-3" />
@@ -113,7 +129,6 @@ export default function ClienteRow({ cliente, onVerHistorial, isMobile = false }
                 </div>
             </TableCell>
             <TableCell className="text-right">
-                {' '}
                 {/* Alinea el dropdown a la derecha */}
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>

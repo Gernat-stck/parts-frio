@@ -34,7 +34,7 @@ const buildResumenTributos = (totalIva: number): Tributos[] | null => {
             {
                 codigo: '20',
                 descripcion: 'Impuesto al Valor Agregado',
-                valor: totalIva,
+                valor: Number(totalIva.toFixed(2)),
             },
         ];
     }
@@ -282,8 +282,6 @@ export function generateInvoiceData({
 
                   // Se utilizan los valores ya calculados
                   const montoDescu = formatNumber(item.montoDescu || 0);
-                  console.log('Precio sin iva', totalItemPriceWithoutIva);
-                  console.log('precio base', baseAmount);
                   const baseItem = {
                       numItem: index + 1,
                       tipoItem: formatNumber(item.tipo_item || 1),
@@ -339,6 +337,7 @@ export function generateInvoiceData({
  */
 export function buildCreditNotePayload(data: CreditNotePayload): CreditNotePayload {
     const numeroDocumento = data?.documentoRelacionado?.[0]?.numeroDocumento;
+    console.log('subtotalVentas', data.resumen.subTotalVentas);
     const date = getDateTime();
     // 1. Emisor: Se seleccionan solo los campos requeridos por el esquema
     const emisor: Emitter = {

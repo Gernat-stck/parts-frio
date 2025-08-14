@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\MailController;
 
 Route::middleware(['auth', 'verified', 'roles:admin'])->group(function () {
     Route::get('/admin', [AdminController::class, 'index'])->name('admin.dashboard');
@@ -14,6 +15,7 @@ Route::middleware(['auth', 'verified', 'roles:admin'])->group(function () {
     Route::get('/admin/inventory/edit/{id}', [AdminController::class, 'editInventory'])->name('admin.inventory.edit');
     Route::post('/inventory/store', [AdminController::class, 'storeInventoryItem'])->middleware(['auth', 'role:admin'])->name('admin.inventory.store');
     Route::put('/inventory/update/{inventory:product_code}', [AdminController::class, 'updateInventoryItem'])->name('admin.inventory.update');
+    Route::post('/inventory/updateStock/{action}/{product_code}', [AdminController::class, 'editStockItem'])->name('admin.add.stock');
     Route::delete('/inventory/delete/{inventory:product_code}', [AdminController::class, 'deleteInventoryItem'])->name('admin.inventory.delete');
     #endregion
     #region Display the user management page
@@ -28,12 +30,14 @@ Route::middleware(['auth', 'verified', 'roles:admin'])->group(function () {
     Route::get('admin/sales/payment-form', [AdminController::class, 'paymentMethod'])->name('admin.sales.payment');
     Route::get('admin/sales/invoice', [AdminController::class, 'showInvoice'])->name('admin.sales.invoice');
     Route::post('/admin/save/{tipoDte}/sale', [AdminController::class, 'saveInvoice'])->name('admin.save.invoice');
+    Route::post('admin/send/dte/mail', [MailController::class, 'send'])->name('admin.dte.send');
     #endregion
 
     #region  Display the sales report page
     Route::get('/admin/sales/history', [AdminController::class, 'salesHistory'])->name('admin.sales.history');
     Route::post('/admin/sales/create-contingency', [AdminController::class, 'createContingecyEvent'])->name('admin.sales.certify');
     Route::get('/admin/sales/nc/{codigoGeneracion}', [AdminController::class, 'showCreateCreditNote'])->name('admin.sales.show.credit.note');
+    Route::get('/admin/sales/consulta/dte/{numeroGeneracion}', [AdminController::class, 'showDTE'])->name('admin.sales.history.dte.detail');
     #endregion
     #region clients record
     Route::get('/admin/sales/record', [AdminController::class, 'salesRecord'])->name('admin.sales.record');

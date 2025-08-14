@@ -75,54 +75,50 @@ export function buildResumen({
  * @param cuerpoDocumento Un array de ítems del documento.
  * @returns Un objeto con los totales calculados y formateados.
  */
+const roundMoney = (num: number) => {
+    const rounded = Math.round((num + Number.EPSILON) * 100) / 100;
+    return Math.abs(rounded) < 0.005 ? 0 : rounded;
+};
+
 export const calculateResumeTotals = (cuerpoDocumento: BodyDocument[]) => {
-    // Inicializar los acumuladores con precisión decimal
     let totalGravada = 0;
     let subTotalVentas = 0;
     let totalDescu = 0;
 
-    // Iterar sobre cada ítem para acumular los totales
     cuerpoDocumento.forEach((item) => {
-        // Asegurarse de que los valores sean numéricos
         const ventaGravada = parseFloat(item.ventaGravada as unknown as string) || 0;
         const montoDescu = parseFloat(item.montoDescu as unknown as string) || 0;
         const precioUni = parseFloat(item.precioUni as unknown as string) || 0;
         const cantidad = parseFloat(item.cantidad as unknown as string) || 0;
-        // Acumular la venta gravada del ítem sin restarle el descuento
+
         totalGravada += ventaGravada;
-        // Acumular el subtotal de las ventas (precio * cantidad) sin el descuento
         subTotalVentas += precioUni * cantidad;
-        // Acumular el total de descuentos de todos los ítems
         totalDescu += montoDescu;
-        // Calcular el IVA del ítem basado en la venta gravada (después de descuento)
-        // Se utiliza el impuesto del 13% para el IVA
     });
 
-    // Redondear los valores acumulados al final
-    const finalTotalGravada = parseFloat(totalGravada.toFixed(2));
-    const finalSubTotalVentas = parseFloat(subTotalVentas.toFixed(2));
-    const finalTotalDescu = parseFloat(totalDescu.toFixed(2));
+    const finalTotalGravada = roundMoney(totalGravada);
+    const finalSubTotalVentas = roundMoney(subTotalVentas);
+    const finalTotalDescu = roundMoney(totalDescu);
 
-    // Calcular los totales finales del resumen
-    const subTotal = finalSubTotalVentas - finalTotalDescu;
-    const montoTotalOperacion = (subTotal * 13) / 100;
-    const totalPagar = montoTotalOperacion;
+    // Aquí evitamos negativos fantasmas
+    const subTotal = roundMoney(finalSubTotalVentas - finalTotalDescu);
+    const totalIva = roundMoney(subTotal * 0.13);
+    const totalPagar = roundMoney(subTotal + totalIva);
 
-    // Retornar el objeto con todos los valores formateados
     return {
         totalGravada: finalTotalGravada,
-        subTotalVentas: subTotal,
-        totalIva: (subTotal * 13) / 100,
+        subTotalVentas: finalSubTotalVentas - finalTotalDescu,
+        totalIva,
         totalDescu: finalTotalDescu,
         total: finalTotalGravada,
-        totalPagar: totalPagar,
+        totalPagar,
         montoTotalOperacion: finalTotalGravada,
-        subTotal: subTotal,
+        subTotal,
         tributos: [
             {
                 codigo: '20',
                 descripcion: 'Impuesto al Valor Agregado',
-                valor: (subTotal * 13) / 100,
+                valor: totalIva,
             },
         ],
     };

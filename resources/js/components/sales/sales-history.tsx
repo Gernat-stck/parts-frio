@@ -14,7 +14,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { DialogAnularFactura } from './anulation-dialog';
 import { DialogCertificarFacturas } from './certificate-dialog';
-import { DialogDetallesFactura } from './detail-dialog';
 import FilterAndSearch from './filter-search-component';
 
 interface HistorialPageProps {
@@ -39,7 +38,6 @@ export default function HistorialFacturas() {
     const [anio, setAnio] = useState(String(filters?.year) || String(new Date().getFullYear()));
 
     const [facturaSeleccionada, setFacturaSeleccionada] = useState<Factura | null>(null);
-    const [mostrarDetalles, setMostrarDetalles] = useState(false);
     const [mostrarAnular, setMostrarAnular] = useState(false);
     const [mostrarCertificar, setMostrarCertificar] = useState(false);
     const [contraseñaAdmin, setContraseñaAdmin] = useState('');
@@ -66,8 +64,7 @@ export default function HistorialFacturas() {
     };
 
     const handleVerDetalles = (factura: Factura) => {
-        setFacturaSeleccionada(factura);
-        setMostrarDetalles(true);
+        router.get(route('admin.sales.history.dte.detail', { numeroGeneracion: factura.codigoGeneracion }));
     };
 
     const handleAnularFactura = (factura: Factura) => {
@@ -233,7 +230,7 @@ export default function HistorialFacturas() {
                                             </TableCell>
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
-                                                    <TableCell className="max-w-70 truncate overflow-hidden text-sm font-medium whitespace-nowrap">
+                                                    <TableCell className="max-w-60 truncate overflow-hidden text-sm font-medium whitespace-nowrap">
                                                         {factura.receptor}
                                                     </TableCell>
                                                 </TooltipTrigger>
@@ -272,12 +269,14 @@ export default function HistorialFacturas() {
                                                             <Eye className="mr-2 h-4 w-4 text-muted-foreground" />
                                                             Ver detalles
                                                         </DropdownMenuItem>
-                                                        <DropdownMenuItem
-                                                            onClick={() => createNotaCredito(factura.codigoGeneracion, factura.tipoDTE)}
-                                                        >
-                                                            <FilePenLineIcon className="mr-2 h-4 w-4 text-muted-foreground" />
-                                                            Nota de crédito
-                                                        </DropdownMenuItem>
+                                                        {factura.tipoDTE === '03' && (
+                                                            <DropdownMenuItem
+                                                                onClick={() => createNotaCredito(factura.codigoGeneracion, factura.tipoDTE)}
+                                                            >
+                                                                <FilePenLineIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+                                                                Nota de crédito
+                                                            </DropdownMenuItem>
+                                                        )}
                                                         {factura.estado !== 'anulada' && (
                                                             <DropdownMenuItem onClick={() => handleAnularFactura(factura)}>
                                                                 <X className="mr-2 h-4 w-4 text-destructive" />
@@ -407,9 +406,6 @@ export default function HistorialFacturas() {
                     maxPageButtons={5}
                 />
             </div>
-
-            {/* Modal de detalles */}
-            <DialogDetallesFactura open={mostrarDetalles} onOpenChange={setMostrarDetalles} factura={facturaSeleccionada} />
 
             {/* Modal de anulación */}
             <DialogAnularFactura

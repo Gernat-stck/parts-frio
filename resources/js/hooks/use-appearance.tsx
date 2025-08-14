@@ -1,6 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+'use client';
 
-export type Appearance = 'light' | 'dark' | 'system';
+import { useCallback, useEffect, useState } from 'react';
+import { THEMES } from '../constants/themeConstants';
+
+export type Appearance = 'light' | 'dark' | 'system' | 'amber' | 'blue' | 'forest' | 'ocean' | 'sunset' | 'neon';
 
 const prefersDark = () => {
     if (typeof window === 'undefined') {
@@ -20,9 +23,16 @@ const setCookie = (name: string, value: string, days = 365) => {
 };
 
 const applyTheme = (appearance: Appearance) => {
-    const isDark = appearance === 'dark' || (appearance === 'system' && prefersDark());
+    // Determinar si debe aplicarse el modo oscuro
+    const resolvedTheme = appearance === 'system' ? (prefersDark() ? 'dark' : 'light') : appearance;
 
-    document.documentElement.classList.toggle('dark', isDark);
+    // Eliminar clases anteriores
+    THEMES.forEach((theme) => {
+        document.documentElement.classList.remove(theme);
+    });
+
+    // Aplicar la nueva clase
+    document.documentElement.classList.add(resolvedTheme);
 };
 
 const mediaQuery = () => {

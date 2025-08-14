@@ -44,8 +44,8 @@ const stockLegendItems: StockLegendItem[] = [
 
 export const StockLegend = () => {
     return (
-        <Card className="border-0 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20">
-            <CardHeader className="pb-3">
+        <Card className="border-0 ">
+            <CardHeader className="pt-3">
                 <CardTitle className="text-base font-semibold sm:text-lg">Leyenda de Estados de Stock</CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
@@ -53,20 +53,20 @@ export const StockLegend = () => {
                     {stockLegendItems.map((item) => {
                         const IconComponent = item.icon;
                         return (
-                            <div key={item.label} className="flex items-start gap-2 rounded-lg bg-white/50 p-3 sm:gap-3 dark:bg-black/20">
+                            <div key={item.label} className="flex items-start gap-2 rounded-lg bg-accent/50 p-3 sm:gap-3">
                                 <IconComponent className={`mt-0.5 h-4 w-4 flex-shrink-0 sm:h-5 sm:w-5 ${item.color}`} />
                                 <div className="min-w-0 flex-1">
                                     <div className={`text-sm font-medium sm:text-base ${item.textColor}`}>{item.label}</div>
-                                    <div className="text-xs text-gray-600 sm:text-sm dark:text-gray-400">{item.description}</div>
+                                    <div className="text-xs sm:text-sm dark:text-gray-400">{item.description}</div>
                                 </div>
                             </div>
                         );
                     })}
                 </div>
-                <div className="mt-4 rounded-lg bg-blue-50 p-3 dark:bg-blue-950/30">
+                <div className="mt-4 rounded-lg bg-blue-50 p-3 ">
                     <div className="flex items-start gap-2">
                         <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600" />
-                        <div className="text-xs text-blue-700 sm:text-sm dark:text-blue-300">
+                        <div className="text-xs text-blue-700 sm:text-sm dark:text-blue-400">
                             <strong>Nota:</strong> Los productos con stock crítico aparecen con borde rojo animado para mayor visibilidad. El estado
                             se calcula comparando el stock actual con el stock mínimo configurado.
                         </div>

@@ -19,10 +19,13 @@ use App\Services\InvoiceService;
 use App\Services\SaleService;
 use App\Services\Support\SchemaAwareNormalizer;
 use App\Services\UserService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request as HttpRequest;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Vite;
 use Throwable;
 
 class AdminController extends Controller
@@ -197,6 +200,23 @@ class AdminController extends Controller
             return redirect()->back()->with('error', "Ocurrió un error inesperado al actualizar el producto.");
         }
     }
+    /**
+     * Edit Stock product
+     * @param string $action
+     * @param string $product_code
+     * @param HttpRequest $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function editStockItem(string $action, string $product_code, HttpRequest $request): \Illuminate\Http\RedirectResponse
+    {
+        try {
+            $quantity = (int) $request->input('quantity');
+            $this->inventoryService->updateStockProductManually($product_code, $quantity, $action);
+            return redirect()->back()->with('success', 'Stock actualizado con éxito');
+        } catch (Throwable $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
+    }
 
     /**
      * Delete an inventory item by product code.
@@ -352,47 +372,54 @@ class AdminController extends Controller
     }
 
     /**
-     * Save invoice in DB and process with Hacienda API (simulated).
+     * Save invoice in DB and process with Hacienda API.
      *
      * @param HttpRequest $request The HTTP request containing invoice data.
      * @param string $tipoDte The type of DTE (e.g., 'fc', 'ccf').
-     * @return \Illuminate\Http\RedirectResponse
+     * @return JsonResponse
      */
-    public function saveInvoice(HttpRequest $request, string $tipoDte): \Illuminate\Http\RedirectResponse
+    public function saveInvoice(HttpRequest $request, string $tipoDte): JsonResponse
     {
         try {
-            // Validar si es credito fiscal, factura, nota de credito y obtener la URL del esquema
+            // Obtén los datos del payload de 'invoiceData'
+            $payload = $request->input('invoiceData');
+
             $schemaUrl = $this->invoiceService->getSchemaUrl($tipoDte);
-
-            // Normalizar valores tipo string 'null', 'true', 'false'
-            $rawInput = $request->all();
-
-            // Leer y aplicar normalizador basado en el esquema JSON
             $schemaPath = storage_path($schemaUrl);
+
             if (!file_exists($schemaPath)) {
                 Log::error("Esquema no encontrado para tipoDte: {$tipoDte} en {$schemaPath}");
-                return redirect()->back()->with('error', 'Error de configuración: Esquema DTE no encontrado.');
+                return response()->json(['error' => 'Error de configuración: Esquema DTE no encontrado.'], 500);
             }
+
             $schema = json_decode(file_get_contents($schemaPath));
             if (json_last_error() !== JSON_ERROR_NONE) {
                 Log::error("Error al decodificar esquema JSON para tipoDte {$tipoDte}: " . json_last_error_msg());
-                return redirect()->back()->with('error', 'Error de configuración: Esquema DTE inválido.');
+                return response()->json(['error' => 'Error de configuración: Esquema DTE inválido.'], 500);
             }
 
             $normalizer = new SchemaAwareNormalizer();
-            $normalized = $normalizer->normalize($rawInput, $schema);
-            // Enviar a API de Hacienda 
-            $response = $this->haciendaService->recepcionDTE( $normalized);
-            // Acceder al array ya decodificado directamente desde la propiedad 'original'
-            $responseArray = $response->original;
-            // Guardar venta (incluye el sello de recibido de hacienda si aplica)
-            $sales = $this->invoiceService->storeDte($normalized, $responseArray);
+            // Pasa el payload correcto al normalizador
+            $normalized = $normalizer->normalize($payload, $schema);
 
-            Log::info("Venta finalizada y registrada para código de generación: " . ($sales->codigoGeneracion ?? 'N/A'));
-            return redirect()->back()->with('success', 'Venta Finalizada y DTE procesado.');
+            $response = $this->haciendaService->recepcionDTE($normalized);
+
+            $responseArray = $response->original;
+
+            $invoiceData = $this->invoiceService->storeDte($normalized, $responseArray);
+
+            if ($tipoDte !== '05') {
+                $this->inventoryService->updateStockProduct($normalized);
+            }
+
+            return response()->json([
+                'invoiceData' => $invoiceData,
+                'isCertificate' => true,
+                'message' => 'Venta Finalizada y DTE procesado.'
+            ]);
         } catch (Throwable $e) {
-            Log::error("Error al guardar factura: " . $e->getMessage(), ['request_data' => $normalized]);
-            return redirect()->back()->with('error', $e->getMessage());
+            Log::error("Error al guardar factura: " . $e->getMessage(), ['request_data' => $normalized ?? []]);
+            return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 
@@ -533,7 +560,50 @@ class AdminController extends Controller
             return redirect()->back()->with('error', 'No se pudieron cargar los datos en este momento.');
         }
     }
+    /**
+     * Show a DTE Details by Code Generation
+     * @param string $codigoGeneracion
+     * @return \Inertia\Response | \Illuminate\Http\RedirectResponse
+     */
+    public function showDTE(string $codigoGeneracion): \Inertia\Response | \Illuminate\Http\RedirectResponse
+    {
+        try {
+            $dteDetails = $this->saleService->findInvoiceByCodigoGeneracion($codigoGeneracion);
+            return Inertia::render('admin/sales/detail-dte', [
+                'codigoGeneracion' => $codigoGeneracion,
+                'invoiceData' => $dteDetails
+            ]);
+        } catch (Throwable $e) {
+            Log::error("Error al cargar el Dte" . $e->getMessage());
+            return redirect()->back()->with('error', 'Error al obtener DTE: ' . $codigoGeneracion);
+        }
+    }
 
+    /**
+     * Show a DTE Details by Code Generation only JSON data
+     * @param string $codigoGeneracion
+     * @return JsonResponse
+     */
+    public function getJsonDTE(string $codigoGeneracion): JsonResponse
+    {
+        try {
+            $dteDetails = $this->saleService->findInvoiceByCodigoGeneracion($codigoGeneracion);
+
+            if (!$dteDetails) {
+                return response()->json(['error' => 'DTE no encontrado.'], 404);
+            }
+
+            // Usa el operador de fusión de nulos para garantizar que json_decode
+            // siempre reciba un string, evitando la advertencia de Intelephense.
+            $jsonContent = json_decode($dteDetails->json_enviado ?? '{}', true);
+
+            return response()->json($jsonContent);
+        } catch (Throwable $e) {
+            Log::error("Error al cargar el Dte: " . $e->getMessage());
+
+            return response()->json(['error' => 'Error al cargar el DTE.'], 500);
+        }
+    }
     #endregion
 
     #region: Client Record

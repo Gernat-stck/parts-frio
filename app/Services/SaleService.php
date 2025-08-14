@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Receiver;
 use App\Models\SalesHistory;
 use Carbon\Carbon;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Log;
@@ -210,12 +211,17 @@ class SaleService
      */
     public function findInvoiceByCodigoGeneracion(string $codigoGeneracion): array|null
     {
-        $invoice = SalesHistory::where('codigoGeneracion', $codigoGeneracion)->first();
-
-        if (!$invoice) {
+        try {
+            $registro = SalesHistory::where('codigoGeneracion', $codigoGeneracion)->first();
+            if (!$registro) {
+                throw new Exception("No se encontró historial para el código: {$codigoGeneracion}");
+            }
+            // Si json_enviado es string JSON, lo decodificamos
+            return $registro->json_enviado;
+        } catch (Throwable $e) {
+            // Puedes loguear el error si lo deseas
+            Log::error("Error al obtener datos del DTE"  . $e->getMessage());
             return null;
         }
-
-        return $invoice->json_enviado;
     }
 }

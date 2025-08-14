@@ -18,6 +18,7 @@ class HaciendaService
 
         // 2. Firmar el DTE
         $dteFirmado = app(FirmadorService::class)->firmar($datos);
+        Log::info('Hasta aqui sin errores');
 
         // 3. Validar campos requeridos
         foreach (['version', 'tipoDte', 'codigoGeneracion'] as $campo) {

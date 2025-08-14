@@ -15,7 +15,6 @@ interface PaymentStepProps {
 }
 
 export default function PaymentStep({ data, setData, cartItems, onNext, onPrev }: PaymentStepProps) {
-    console.log('cartItems', cartItems);
     const calculateTotal = () => {
         const subtotal = cartItems.reduce((total, item) => {
             return total + (item.quantity * item.price - (item.montoDescu || 0));
@@ -66,8 +65,8 @@ export default function PaymentStep({ data, setData, cartItems, onNext, onPrev }
                     <CardTitle className="text-lg sm:text-xl">Método de Pago</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4 px-0 sm:space-y-6 sm:px-6">
-                    <div className="rounded-lg bg-blue-50 p-3 sm:p-4 dark:bg-blue-500/20">
-                        <div className="text-xl font-bold text-blue-900 sm:text-2xl dark:text-blue-100">Total a Pagar: ${total.toFixed(2)}</div>
+                    <div className="rounded-lg p-3 sm:p-4 ">
+                        <div className="text-xl font-bold  sm:text-2xl ">Total a Pagar: ${total.toFixed(2)}</div>
                     </div>
 
                     <div className="space-y-4">
@@ -131,7 +130,7 @@ export default function PaymentStep({ data, setData, cartItems, onNext, onPrev }
                         </div>
                     )}
 
-                    <div className="rounded-lg bg-gray-50 p-3 sm:p-4 dark:bg-blue-500/20">
+                    <div className="rounded-lg p-3 sm:p-4 ">
                         <h3 className="mb-2 text-sm font-semibold sm:text-base">Resumen del Pago</h3>
                         <div className="space-y-1 text-xs sm:text-sm">
                             <div className="flex justify-between">

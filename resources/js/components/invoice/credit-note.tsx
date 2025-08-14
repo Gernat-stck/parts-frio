@@ -1,9 +1,11 @@
-import { buildCreditNotePayload, convertirNumeroALetras, convertToFormData, generateInvoiceData } from '@/helpers/generadores';
+import { buildCreditNotePayload, convertirNumeroALetras, generateInvoiceData } from '@/helpers/generadores';
 import { BodyDocument, CreditNotePayload, InvoicePayload } from '@/types/invoice';
-import { router } from '@inertiajs/react';
-import { CheckCircle, Eye, Minus, Trash2, Zap } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+import { CheckCircle, Download, Eye, Mail, Minus, Printer, Trash2, Zap } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { calculateResumeTotals } from '../../hooks/use-invoice';
+import { usePDFDownload } from '../../hooks/use-pdf-download';
 import ClientFormStep from '../client/client-form';
 import LoaderCute from '../loader/loader-page';
 import { Badge } from '../ui/badge';
@@ -17,13 +19,20 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Textarea } from '../ui/textarea';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
-import ElectronicInvoicePreview from './dte-preview';
+import { DynamicInvoice } from './dynamic-invoice';
+import { PDFInvoice } from './pdf-invoice';
 import { TributosDialog } from './tributos-dialog';
 
 interface CreditNoteTabsProps {
     invoice: InvoicePayload;
 }
-
+// Helper centralizado para normalizar resultados monetarios
+const normalizeMoney = (num: number) => {
+    // Redondeo consistente a 2 decimales
+    const rounded = Math.round((num + Number.EPSILON) * 100) / 100;
+    // Si está muy cerca de 0, forzar a 0
+    return Math.abs(rounded) < 0.005 ? 0 : rounded;
+};
 export default function CreditNoteTabs({ invoice }: CreditNoteTabsProps) {
     const [formData, setFormData] = useState<CreditNotePayload | null>(null);
     const [activeTab, setActiveTab] = useState('related');
@@ -31,6 +40,14 @@ export default function CreditNoteTabs({ invoice }: CreditNoteTabsProps) {
     const [isTributosModalOpen, setIsTributosModalOpen] = useState(false);
     const [selectedItemIndex, setSelectedItemIndex] = useState<number | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [isCertificate, setIsCertificate] = useState<boolean>(false);
+    const invoiceRef = useRef<HTMLDivElement | null>(null);
+    const [saleId, setSaleId] = useState<number | string | null>(null);
+
+    const [filename, setFilename] = useState<string>(`factura-${formData?.identificacion?.numeroControl || 'sin-control'}`);
+
+    const { downloadPDF, sendDTEEmail, printPDF } = usePDFDownload({ filename });
+
     useEffect(() => {
         if (invoice) {
             const initialFormData = generateInvoiceData({
@@ -91,46 +108,49 @@ export default function CreditNoteTabs({ invoice }: CreditNoteTabsProps) {
     const handleItemChange = (index: number, field: keyof BodyDocument, value: unknown) => {
         setFormData((prev) => {
             if (!prev) return prev;
+
             const updatedItems = [...prev.cuerpoDocumento];
             const currentItem = updatedItems[index];
 
-            // Se crea el objeto actualizado, pero sin cambiar el precioUni ya que es fijo
-            const updatedItem = { ...currentItem, [field]: value };
+            // --- Normalizar valores numéricos a positivos ---
+            const normalizePositive = (val: unknown) => {
+                const num = parseFloat(val as string);
+                return isNaN(num) || num < 0 ? 0 : num;
+            };
 
-            // Recalcular los valores solo si los campos "cantidad" o "montoDescu" cambian
+            // Aplica la normalización solo si el campo es numérico
+            const safeValue = ['cantidad', 'montoDescu', 'precioUni', 'ventaGravada'].includes(field as string) ? normalizePositive(value) : value;
+
+            const updatedItem = { ...currentItem, [field]: safeValue };
+
+            // Helper para redondeo final sin falsos negativos/positivos
+            const roundMoney = (num: number) => {
+                const rounded = Math.round((num + Number.EPSILON) * 1000) / 1000; // aquí 3 decimales
+                return Math.abs(rounded) < 0.0005 ? 0 : rounded;
+            };
+
             if (['cantidad', 'montoDescu'].includes(field as string)) {
-                const cantidad = parseFloat(updatedItem.cantidad as unknown as string) || 0;
-                const precioSinIva = parseFloat(currentItem.precioUni as unknown as string) || 0;
+                const cantidad = normalizePositive(updatedItem.cantidad);
+                const precioSinIva = normalizePositive(currentItem.precioUni);
 
-                // 1. Calcular el subtotal (Monto Base) antes de descuento
                 const subtotalSinIva = cantidad * precioSinIva;
-
                 let montoDescuMonetario = 0;
 
-                // 2. Si el campo modificado es 'montoDescu', el valor es el porcentaje
                 if (field === 'montoDescu') {
-                    const porcentaje = parseFloat(value as string) || 0;
-
-                    // Asegurar que el porcentaje no sea negativo y no exceda el 100%
-                    const finalPorcentaje = Math.max(0, Math.min(100, porcentaje));
+                    const porcentaje = normalizePositive(value); // este ahora sí es número puro
+                    const finalPorcentaje = Math.min(100, porcentaje);
                     montoDescuMonetario = subtotalSinIva * (finalPorcentaje / 100);
                 } else {
-                    // Si cambia la cantidad
-                    // 3. Recalcular el monto del descuento para mantener el porcentaje constante
                     const porcentajeActual =
-                        subtotalSinIva > 0 ? ((currentItem.montoDescu || 0) / (currentItem.cantidad * precioSinIva || 1)) * 100 : 0;
-                    const finalPorcentaje = Math.max(0, Math.min(100, porcentajeActual));
+                        subtotalSinIva > 0
+                            ? ((currentItem.montoDescu || 0) / (normalizePositive(currentItem.cantidad) * precioSinIva || 1)) * 100
+                            : 0;
+                    const finalPorcentaje = Math.min(100, normalizePositive(porcentajeActual));
                     montoDescuMonetario = subtotalSinIva * (finalPorcentaje / 100);
                 }
 
-                // 4. Actualizar el monto del descuento monetario en el ítem
-                updatedItem.montoDescu = parseFloat(montoDescuMonetario.toFixed(2));
-
-                // 5. Calcular el valor de la venta gravada después de aplicar el descuento
-                const ventaGravadaCalculada = subtotalSinIva - updatedItem.montoDescu;
-
-                // 6. Limitar el valor de ventaGravada a dos decimales y actualizarlo
-                updatedItem.ventaGravada = parseFloat(ventaGravadaCalculada.toFixed(2));
+                updatedItem.montoDescu = roundMoney(montoDescuMonetario); // 3 decimales reales
+                updatedItem.ventaGravada = roundMoney(subtotalSinIva - updatedItem.montoDescu);
             }
 
             updatedItems[index] = updatedItem;
@@ -201,17 +221,42 @@ export default function CreditNoteTabs({ invoice }: CreditNoteTabsProps) {
         if (!formData || !validateForm()) {
             return;
         }
+
         setIsLoading(true);
+
         try {
+            // Prepara los datos para el envío
             const formattedData = buildCreditNotePayload(formData);
-            const formDataToSend = convertToFormData(formattedData);
-            router.post(route('admin.save.invoice', { tipoDte: '05' }), formDataToSend, {
-                preserveScroll: true,
-                preserveState: true,
-            });
+            // Realiza la petición POST con Axios
+            const response = await axios.post(
+                route('admin.save.invoice', { tipoDte: '05' }),
+                { invoiceData: formattedData }, // Envías los datos bajo la clave 'invoiceData'
+            );
+            // Accede a los datos de la respuesta
+            const { invoiceData: updatedInvoiceData, message, isCertificate: isCert } = response.data;
+            const parsed =
+                typeof updatedInvoiceData?.json_enviado === 'string'
+                    ? JSON.parse(updatedInvoiceData.json_enviado)
+                    : (updatedInvoiceData?.json_enviado ?? updatedInvoiceData);
+
+            setFormData(updatedInvoiceData.json_enviado);
+            setIsCertificate(Boolean(isCert));
+            const numeroControl = parsed?.identificacion?.numeroControl ?? updatedInvoiceData?.identificacion?.numeroControl ?? 'sin-control';
+
+            setFilename(`factura-${numeroControl}`);
+
+            // Guarda saleId para el envío del correo luego
+            setSaleId(updatedInvoiceData?.codigoGeneracion ?? null);
+
+            toast.success(message);
         } catch (error) {
             console.error('Error al generar la nota de crédito:', error);
-            alert('Error al generar la nota de crédito');
+            if (axios.isAxiosError(error)) {
+                const errorMessage = error.response?.data?.error || 'Error al generar la nota de crédito';
+                toast.error(errorMessage);
+            } else {
+                toast.error('Ocurrió un error inesperado');
+            }
         } finally {
             setIsLoading(false);
         }
@@ -275,6 +320,72 @@ export default function CreditNoteTabs({ invoice }: CreditNoteTabsProps) {
     if (isLoading) {
         return <LoaderCute description="Estamos validando informacion con hacienda, espera un momento." />;
     }
+    const previewData = () => {
+        if (isCertificate) return;
+        const formattedData = buildCreditNotePayload(formData);
+        setFormData(formattedData);
+    };
+    const buildQrData = () => {
+        const id = formData?.identificacion;
+        if (!id?.ambiente || !id?.codigoGeneracion || !id?.fecEmi) return undefined;
+        return `https://admin.factura.gob.sv/consultaPublica?ambiente=${id.ambiente}&codGen=${id.codigoGeneracion}&fechaEmi=${id.fecEmi}`;
+    };
+
+    const handleDownloadPDF = async () => {
+        try {
+            const qrData = buildQrData();
+            await downloadPDF(<PDFInvoice invoiceData={formData} />, qrData);
+            toast.success('PDF generado exitosamente');
+        } catch (error) {
+            console.error('Error al descargar PDF:', error);
+            toast.error('Error al generar el PDF');
+        }
+    };
+
+    // OPCIONAL: enviar correo. El backend usa su template propio.
+    const handleSendEmail = async () => {
+        if (!isCertificate) {
+            toast.error('Debes certificar antes de enviar el DTE por correo.');
+            return;
+        }
+        if (!saleId) {
+            toast.error('No se obtuvo el identificador de la venta (sale_id).');
+            return;
+        }
+        console.log('ID', saleId);
+        try {
+            setIsLoading(true);
+
+            const qrData = buildQrData();
+
+            // Solo enviamos lo mínimo: PDF y sale_id. El backend arma el template y toma json_enviado.
+            await sendDTEEmail({
+                pdfComponent: <PDFInvoice invoiceData={formData} />,
+                endpoint: route('admin.dte.send'), // Ajusta al endpoint real: p.ej. '/api/dte/send'
+                saleId,
+                qrData,
+                // Si quieres mantenerlo 100% opcional, NO envíes recipient/message aquí.
+                // recipient: invoiceData?.receptor?.correo, // opcional
+                // message: 'Gracias por tu compra...',     // opcional (el backend ya tiene template)
+            });
+
+            toast.success('DTE enviado por correo');
+        } catch (error) {
+            console.error('Error al enviar DTE por correo:', error);
+            toast.error('No se pudo enviar el DTE por correo');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    const handlePrint = async () => {
+        try {
+            const qrData = buildQrData();
+            await printPDF(<PDFInvoice invoiceData={formData} />, qrData);
+        } catch {
+            toast.error('No se pudo imprimir el documento');
+        }
+    };
+
     return (
         <div className="mx-auto w-full max-w-7xl space-y-2">
             <Card className="border-none shadow-none">
@@ -318,7 +429,7 @@ export default function CreditNoteTabs({ invoice }: CreditNoteTabsProps) {
                                         <TabsTrigger value="summary" className="px-2 py-2 text-xs sm:text-sm">
                                             Resumen
                                         </TabsTrigger>
-                                        <TabsTrigger value="preview" className="px-2 py-2 text-xs sm:text-sm">
+                                        <TabsTrigger value="preview" onClick={previewData} className="px-2 py-2 text-xs sm:text-sm">
                                             Preview
                                         </TabsTrigger>
                                     </TabsList>
@@ -504,24 +615,20 @@ export default function CreditNoteTabs({ invoice }: CreditNoteTabsProps) {
                                                                         type="number"
                                                                         step="1"
                                                                         min="0"
-                                                                        value={
-                                                                            // Muestra el porcentaje calculado a partir del monto monetario
-                                                                            ((item.montoDescu / (item.precioUni * item.cantidad || 1)) * 100).toFixed(
-                                                                                0,
-                                                                            )
-                                                                        }
-                                                                        onChange={(e) =>
-                                                                            handleItemChange(
-                                                                                index,
-                                                                                'montoDescu',
-                                                                                // Pasa el porcentaje (valor del input) al handler
-                                                                                parseFloat(e.target.value).toFixed(2) || 0,
-                                                                            )
-                                                                        }
+                                                                        value={(() => {
+                                                                            const base = item.precioUni * item.cantidad || 1;
+                                                                            const porcentaje = (item.montoDescu / base) * 100;
+                                                                            return Number.isFinite(porcentaje) ? Math.round(porcentaje) : 0;
+                                                                        })()}
+                                                                        onChange={(e) => {
+                                                                            const porcentaje = parseFloat(e.target.value) || 0;
+                                                                            // Enviar el porcentaje como número puro, sin toFixed aquí
+                                                                            handleItemChange(index, 'montoDescu', porcentaje);
+                                                                        }}
                                                                         placeholder="0"
                                                                         className="w-[80px] [appearance:textfield] text-right [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                                                                     />
-                                                                    <span>% ({item.montoDescu.toFixed(2) || 0})</span>
+                                                                    <span>% ({item.montoDescu.toFixed(3)})</span>
                                                                 </TableCell>
                                                                 <TableCell className="text-right">
                                                                     <Input
@@ -584,20 +691,32 @@ export default function CreditNoteTabs({ invoice }: CreditNoteTabsProps) {
                                                         .filter(([key]) =>
                                                             ['totalGravada', 'subTotalVentas', 'totalIva', 'totalDescu', 'total'].includes(key),
                                                         )
-                                                        .map(([key, value]) => (
-                                                            <div className="space-y-2" key={key}>
-                                                                <Label>{key}</Label>
-                                                                <Input
-                                                                    type="number"
-                                                                    step="0.01"
-                                                                    value={typeof value === 'number' ? value.toFixed(2) : value}
-                                                                    onChange={(e) =>
-                                                                        handleInputChange(`resumen.${key}`, parseFloat(e.target.value) || 0)
-                                                                    }
-                                                                    disabled
-                                                                />
-                                                            </div>
-                                                        ))}
+                                                        .map(([key, value]) => {
+                                                            // Helper para forzar valores >= 0
+                                                            const normalizePositive = (val: unknown) => {
+                                                                const num = parseFloat(val as string);
+                                                                return isNaN(num) || num < 0 ? 0 : num;
+                                                            };
+
+                                                            return (
+                                                                <div className="space-y-2" key={key}>
+                                                                    <Label>{key}</Label>
+                                                                    <Input
+                                                                        type="number"
+                                                                        step="0.01"
+                                                                        value={
+                                                                            typeof value === 'number'
+                                                                                ? normalizeMoney(value)
+                                                                                : normalizeMoney(Number(value))
+                                                                        }
+                                                                        onChange={(e) =>
+                                                                            handleInputChange(`resumen.${key}`, normalizePositive(e.target.value))
+                                                                        }
+                                                                        disabled
+                                                                    />
+                                                                </div>
+                                                            );
+                                                        })}
                                                 {'totalLetras' in formData.resumen && (
                                                     <div className="col-span-1 space-y-2 sm:col-span-2 lg:col-span-3" key="totalenLetras">
                                                         <Label>Total en Letras</Label>
@@ -616,13 +735,17 @@ export default function CreditNoteTabs({ invoice }: CreditNoteTabsProps) {
                                     <TabsContent value="preview" className="mt-3 space-y-2">
                                         <ScrollArea className="h-[46vh]">
                                             {/* Aqui se mostrara el preview */}
-                                            <ElectronicInvoicePreview />
+                                            {formData && (
+                                                <div ref={invoiceRef}>
+                                                    <DynamicInvoice invoiceData={formData} />{' '}
+                                                </div>
+                                            )}
                                         </ScrollArea>
                                     </TabsContent>
                                 </Tabs>
 
                                 <div className="flex flex-col gap-4 border-t pt-6 sm:flex-row">
-                                    <Button type="submit" className="flex-1 sm:flex-none">
+                                    <Button type="submit" className="flex-1 sm:flex-none" disabled={isCertificate}>
                                         <CheckCircle className="mr-2 h-4 w-4" />
                                         Generar Nota de Crédito
                                     </Button>
@@ -630,6 +753,46 @@ export default function CreditNoteTabs({ invoice }: CreditNoteTabsProps) {
                                         <Eye className="mr-2 h-4 w-4" />
                                         Mostrar Vista Previa
                                     </Button>
+                                    {isCertificate && (
+                                        <>
+                                            <span className="w-full sm:flex-1" aria-describedby={!isCertificate ? 'tooltip-download' : undefined}>
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={handleDownloadPDF}
+                                                    disabled={isLoading || !isCertificate}
+                                                    className="w-full bg-transparent"
+                                                >
+                                                    <Download className="mr-2 h-4 w-4" />
+                                                    <span className="hidden sm:inline">Descargar PDF</span>
+                                                    <span className="sm:hidden">PDF</span>
+                                                </Button>
+                                            </span>
+                                            <span className="w-full sm:flex-1" aria-describedby={!isCertificate ? 'tooltip-email' : undefined}>
+                                                <Button
+                                                    variant="outline"
+                                                    disabled={!isCertificate}
+                                                    className="w-full bg-transparent"
+                                                    onClick={handleSendEmail}
+                                                >
+                                                    <Mail className="mr-2 h-4 w-4" />
+                                                    <span className="hidden sm:inline">Enviar por Email</span>
+                                                    <span className="sm:hidden">Email</span>
+                                                </Button>
+                                            </span>
+                                            <span className="w-full sm:flex-1" aria-describedby={!isCertificate ? 'tooltip-print' : undefined}>
+                                                <Button
+                                                    variant="outline"
+                                                    disabled={!isCertificate}
+                                                    onClick={handlePrint}
+                                                    className="w-full bg-transparent" 
+                                                >
+                                                    <Printer className="mr-2 h-4 w-4" />
+                                                    <span className="hidden sm:inline">Imprimir</span>
+                                                    <span className="sm:hidden">Print</span>
+                                                </Button>
+                                            </span>
+                                        </>
+                                    )}
                                 </div>
                             </form>
                         </div>

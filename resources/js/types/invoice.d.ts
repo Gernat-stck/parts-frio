@@ -63,7 +63,7 @@ export interface Factura {
     monto: number;
     selloRecibido: string | null;
     estado: 'aceptado' | 'error' | 'rechazada' | 'anulada';
-    detalles: DetallesFactura;
+    detallesFactura: DetallesFactura;
 }
 // Tipo extendido para compatibilidad
 export interface Sale {
@@ -111,7 +111,7 @@ export interface BodyDocument {
     psv?: number;
     noGravado?: number;
     ivaItem?: number;
-    numeroDocumento:string | null;
+    numeroDocumento: string | null;
     codTributo?: null;
 }
 interface Tributos {
@@ -156,6 +156,7 @@ export interface InvoicePayload {
     extension: null;
     apendice: null;
     [key: string]: unknown;
+    sello_recibido?: string | null;
 }
 export interface ContingenciaPayload {
     selectedFacturas: Factura[];
@@ -194,5 +195,7 @@ export interface CreditNotePayload {
     ventaTercero: null;
     extension: null;
     apendice: Apendice[] | null;
+    sello_recibido?: strin | null;
     [key: string]: unknown;
+    type?: 'fiscal';
 }

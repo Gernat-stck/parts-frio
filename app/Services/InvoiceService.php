@@ -97,6 +97,11 @@ class InvoiceService
             }
 
             try {
+                // Verifica si el sello de recibido existe en la respuesta antes de agregarlo
+                if (isset($response['selloRecibido'])) {
+                    // Agrega el sello de recibido al array $payload
+                    $payload['sello_recibido'] = $response['selloRecibido'];
+                }
                 // Crear el registro de historial de ventas
                 $salesHistory = SalesHistory::create([
                     'tipoDTE'           => $payload['identificacion']['tipoDte'] ?? null, //🆗

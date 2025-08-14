@@ -6,6 +6,7 @@ use App\Http\Requests\Inventory\StoreInventoryItemRequest;
 use App\Http\Requests\Inventory\UpdateInventoryItemRequest;
 use App\Models\Inventory;
 use App\Services\ImageStorageService;
+use Exception;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -240,5 +241,86 @@ class InventoryService
             Log::error("Error al obtener categorías únicas: " . $e->getMessage());
             return []; // Devolver un array vacío en caso de error
         }
+    }
+    /**
+     * Update Manually stock product
+     * @param int $quantity
+     * @param string $action
+     * @param string $productCode
+     * @return array
+     */
+    public function updateStockProductManually(string $productCode, int $quantity, string $action)
+    {
+        DB::beginTransaction();
+        $producto = Inventory::where('product_code', $productCode)->first();
+
+        Log::info('stockProducto' . $producto->stock);
+        if (!$producto) {
+            DB::rollBack();
+            throw new \Exception("Producto con código {$productCode} no encontrado.");
+        }
+
+        if ($action === 'add') {
+            $producto->stock += $quantity;
+        }
+        if ($action === 'subtract') {
+            // Validación de stock suficiente
+            if ($producto->stock < $quantity) {
+                DB::rollBack();
+                throw new \Exception("Stock insuficiente para el producto {$productCode}. Stock actual: {$producto->stock}, requerido: {$quantity}");
+            }
+            $producto->stock -= $quantity;
+        }
+        $producto->save();
+        DB::commit();
+
+        return $resultados[] = [
+            'codigo' => $productCode,
+            'stock_actualizado' => $producto->stock,
+        ];
+    }
+
+    /**
+     * Update Stocke inventory 
+     * @param array $payload
+     * @return array
+     */
+    public function updateStockProduct(array $payload)
+    {
+        DB::beginTransaction();
+        $resultados = [];
+
+        foreach ($payload['cuerpoDocumento'] as $item) {
+            $codigo = $item['codigo'];
+            $cantidadARestar = $item['cantidad'];
+
+            $producto = Inventory::where('product_code', $codigo)->first();
+
+            if (!$producto) {
+                DB::rollBack();
+                throw new Exception("Producto con código {$codigo} no encontrado.");
+            }
+
+            // Validación de stock suficiente
+            if ($producto->stock < $cantidadARestar) {
+                DB::rollBack();
+                throw new Exception("Stock insuficiente para el producto {$codigo}. Stock actual: {$producto->stock}, requerido: {$cantidadARestar}");
+            }
+
+            // Actualización de stock
+            $producto->stock -= $cantidadARestar;
+            $producto->save();
+
+            $resultados[] = [
+                'codigo' => $codigo,
+                'stock_actualizado' => $producto->stock,
+            ];
+        }
+
+        DB::commit();
+        return [
+            'status' => 'success',
+            'actualizados' => $resultados,
+        ];
     }
 }

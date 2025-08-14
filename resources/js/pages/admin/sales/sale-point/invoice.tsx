@@ -1,4 +1,4 @@
-import InvoiceStep from '@/components/invoice/invoice-preview-v2';
+import InvoiceStep from '@/components/invoice/invoice-preview';
 import { INITIAL_PAYMENT, INITIALIZER_RECEIVER } from '@/constants/salesConstants';
 import AppLayout from '@/layouts/app-layout';
 import { adminNavItems } from '@/lib/nav-items';
@@ -49,12 +49,13 @@ export default function Invoice({ auth }: InvoiceProps) {
     const prevStep = () => {
         router.get(route('admin.sales.payment'));
     };
-    console.log(auth)
+    console.log(auth);
+
     return (
         <AppLayout breadcrumbs={breadcrumbs} mainNavItems={adminNavItems}>
             <Head title="Factura" />
             <main className="container mx-auto h-[calc(100vh-5rem)] p-5">
-                <InvoiceStep cartItems={cartItems} customerData={customerData} paymentData={paymentData} onPrev={prevStep} />
+                <InvoiceStep cartItems={cartItems} customerData={customerData} paymentData={paymentData} onPrev={prevStep}  />
             </main>
         </AppLayout>
     );

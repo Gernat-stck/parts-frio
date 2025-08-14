@@ -6,7 +6,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Product } from '@/types/products';
 import { getStockStatus } from '@/utils/inventory-utils';
-import { Edit, MoreHorizontal, Package, Trash2 } from 'lucide-react';
+import { CloudUploadIcon, Edit, MoreHorizontal, Package, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import NoData from '../187443387_10810386.png';
 import { ScrollArea } from '../ui/scroll-area';
@@ -17,9 +17,10 @@ interface InventoryTableProps {
     isAdmin: boolean;
     onEdit: (product: Product) => void;
     onDelete: (product: Product) => void;
+    onAddStock: (productCode: string) => void;
 }
 
-export const InventoryTable = ({ data, isAdmin, onEdit, onDelete }: InventoryTableProps) => {
+export const InventoryTable = ({ data, isAdmin, onEdit, onDelete, onAddStock }: InventoryTableProps) => {
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -129,6 +130,16 @@ export const InventoryTable = ({ data, isAdmin, onEdit, onDelete }: InventoryTab
                                                                 <DropdownMenuItem
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
+                                                                        onAddStock(item.product_code);
+                                                                    }}
+                                                                    className="cursor-pointer"
+                                                                >
+                                                                    <CloudUploadIcon className="mr-2 h-4 w-4" />
+                                                                    Actualizar Stock
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
                                                                         onEdit(item);
                                                                     }}
                                                                     className="cursor-pointer"
@@ -223,6 +234,16 @@ export const InventoryTable = ({ data, isAdmin, onEdit, onDelete }: InventoryTab
                                                         <DropdownMenuItem
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
+                                                                onAddStock(item.product_code);
+                                                            }}
+                                                            className="cursor-pointer"
+                                                        >
+                                                            <CloudUploadIcon className="mr-2 h-4 w-4" />
+                                                            Actualizar Stock
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
                                                                 onEdit(item);
                                                             }}
                                                         >
@@ -273,8 +294,8 @@ export const InventoryTable = ({ data, isAdmin, onEdit, onDelete }: InventoryTab
 
             {/* Modal de detalles del producto */}
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                <DialogContent className="mx-2 max-h-[95vh] w-[calc(100vw-1rem)] max-w-[90vw] overflow-y-auto sm:mx-4 sm:w-full md:max-w-[80vw] lg:max-w-[75vw] xl:max-w-[70vw]">
-                    <ScrollArea className="h-full w-full">
+                <DialogContent className="mx-2 w-[calc(100vw-1rem)] max-w-[89vw] overflow-y-auto sm:mx-4 sm:w-full md:max-w-[80vw] lg:max-w-[75vw] xl:max-w-[70vw]">
+                    <ScrollArea className="h-[90vh] w-full p-2">
                         <DialogHeader className="pb-0">
                             <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl">
                                 <Package className="h-5 w-5 sm:h-6 sm:w-6" />

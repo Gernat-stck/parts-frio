@@ -12,11 +12,12 @@ import { Button } from '../ui/button';
 import { Pagination } from '../ui/pagination';
 import { InventoryFilters } from './inventory-filters';
 import { InventoryTable } from './inventory-table';
+import { StockEditDialog } from './stock-edit-dialog';
 import { StockLegend } from './stock-legend';
 
 interface InventoryDashboardProps {
     auth: Auth;
-    inventoryData: Product[]; // Optional prop for initial data
+    inventoryData: Product[];
 }
 
 export default function InventoryDashboard({ auth, inventoryData }: InventoryDashboardProps) {
@@ -25,7 +26,16 @@ export default function InventoryDashboard({ auth, inventoryData }: InventoryDas
     const { searchTerm, setSearchTerm, categoryFilter, setCategoryFilter, stockFilter, setStockFilter, filteredData, categories } =
         useInventoryFilters({ inventoryData });
 
-    const { isDeleteConfirmOpen, deletingProduct, openDeleteConfirm, closeDeleteConfirm } = useModals();
+    const {
+        isDeleteConfirmOpen,
+        deletingProduct,
+        openDeleteConfirm,
+        closeDeleteConfirm,
+        openAddStockModal,
+        isUpdateStock,
+        updatingStockCode,
+        closeStockModal,
+    } = useModals();
 
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
@@ -50,13 +60,15 @@ export default function InventoryDashboard({ auth, inventoryData }: InventoryDas
     const handleCreate = useCallback(() => {
         router.get(route('admin.inventory.create'));
     }, []);
-
+    const handleEditStock = useCallback((productCode: string, action: 'add' | 'subtract', quantity: number) => {
+        router.post(route('admin.add.stock', { action: action, product_code: productCode }), { quantity });
+    }, []);
     return (
         <ScrollArea className="h-full w-full">
             <div className="p-2">
                 <div className="mx-auto max-w-7xl space-y-2">
                     {/* Header */}
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <h1 className="text-2xl font-bold md:text-3xl">Gestión de Inventario</h1>
                             <p className="mt-1 text-sm opacity-70 md:text-base">Monitorea y administra tu inventario en tiempo real</p>
@@ -87,7 +99,13 @@ export default function InventoryDashboard({ auth, inventoryData }: InventoryDas
                                 categories={categories}
                             />
                             {/* Tabla */}
-                            <InventoryTable data={paginatedData} isAdmin={isAdmin} onEdit={gotoEditForm} onDelete={openDeleteConfirm} />
+                            <InventoryTable
+                                data={paginatedData}
+                                isAdmin={isAdmin}
+                                onEdit={gotoEditForm}
+                                onDelete={openDeleteConfirm}
+                                onAddStock={openAddStockModal}
+                            />
 
                             {/* Paginación */}
                             <Pagination
@@ -120,7 +138,12 @@ export default function InventoryDashboard({ auth, inventoryData }: InventoryDas
                     )}
 
                     {/* Leyenda */}
-
+                    <StockEditDialog
+                        open={isUpdateStock}
+                        onOpenChange={closeStockModal}
+                        productCode={updatingStockCode}
+                        onEditStock={handleEditStock}
+                    />
                     <DeleteConfirmation
                         isOpen={isDeleteConfirmOpen}
                         onClose={closeDeleteConfirm}

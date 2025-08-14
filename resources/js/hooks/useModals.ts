@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { Product } from '@/types/products';
+import type { Product } from '@/types/products';
+import { useCallback, useState } from 'react';
 
 export const useModals = () => {
     const [isProductFormOpen, setIsProductFormOpen] = useState(false);
@@ -7,6 +7,8 @@ export const useModals = () => {
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
     const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
+    const [isUpdateStock, setIsUpdateStock] = useState(false);
+    const [updatingStockCode, setIsUpdatingStock] = useState<string>('');
 
     const openCreateForm = useCallback(() => {
         setFormMode('create');
@@ -35,6 +37,16 @@ export const useModals = () => {
         setDeletingProduct(null);
     }, []);
 
+    const openAddStockModal = useCallback((productCode: string) => {
+        setIsUpdateStock(true);
+        setIsUpdatingStock(productCode);
+    }, []);
+
+    const closeStockModal = useCallback(() => {
+        setIsUpdateStock(false);
+        setIsUpdatingStock('');
+    }, []);
+
     return {
         isProductFormOpen,
         isDeleteConfirmOpen,
@@ -45,6 +57,10 @@ export const useModals = () => {
         openEditForm,
         openDeleteConfirm,
         closeProductForm,
-        closeDeleteConfirm
+        closeDeleteConfirm,
+        openAddStockModal,
+        isUpdateStock,
+        updatingStockCode,
+        closeStockModal,
     };
 };
