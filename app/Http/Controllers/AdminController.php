@@ -383,7 +383,7 @@ class AdminController extends Controller
         try {
             // Obtén los datos del payload de 'invoiceData'
             $payload = $request->input('invoiceData');
-
+            $isAnulacion = $tipoDte === 'anulacion';
             $schemaUrl = $this->invoiceService->getSchemaUrl($tipoDte);
             $schemaPath = storage_path($schemaUrl);
 
@@ -402,14 +402,16 @@ class AdminController extends Controller
             // Pasa el payload correcto al normalizador
             $normalized = $normalizer->normalize($payload, $schema);
 
-            $response = $this->haciendaService->recepcionDTE($normalized);
+            $response = $this->haciendaService->recepcionDTE($normalized, $isAnulacion);
 
             $responseArray = $response->original;
-
-            $invoiceData = $this->invoiceService->storeDte($normalized, $responseArray);
-
-            if ($tipoDte !== '05') {
-                $this->inventoryService->updateStockProduct($normalized);
+            if (!$isAnulacion) {
+                $invoiceData = $this->invoiceService->storeDte($normalized, $responseArray);
+                if ($tipoDte !== '05') {
+                    $this->inventoryService->updateStockProduct($normalized);
+                }
+            } else {
+                $invoiceData  = $this->invoiceService->updateStatus($normalized['documento']['codigoGeneracion']);
             }
 
             return response()->json([

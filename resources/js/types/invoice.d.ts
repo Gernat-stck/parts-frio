@@ -38,6 +38,11 @@ export interface Emitter {
     correo: string;
 }
 
+export interface CartItem extends ProductData {
+    quantity: number;
+    subtotal: number;
+}
+
 // Tipos para facturas y productos
 export interface ProductoFactura {
     nombre: string;
@@ -51,37 +56,6 @@ export interface DetallesFactura {
     iva: number;
     total: number;
 }
-
-export interface Factura {
-    id: number;
-    tipoDTE: string;
-    fechaGeneracion: string;
-    numeroControl: string;
-    codigoGeneracion: string | null;
-    documentoReceptor: string;
-    receptor: string;
-    monto: number;
-    selloRecibido: string | null;
-    estado: 'aceptado' | 'error' | 'rechazada' | 'anulada';
-    detallesFactura: DetallesFactura;
-}
-// Tipo extendido para compatibilidad
-export interface Sale {
-    id: string;
-    date: string;
-    seller: Seller;
-    customer: Customer;
-    items: CartItem[];
-    subtotal: number;
-    tax: number;
-    total: number;
-    status: 'completed' | 'pending';
-}
-
-export interface CartItem extends ProductData {
-    quantity: number;
-    subtotal: number;
-}
 interface Pago {
     codigo: string;
     montoPago: number;
@@ -93,6 +67,52 @@ interface Pago {
 export interface Payment {
     condicionOperacion: number;
     pagos: Pago[];
+}
+export interface Factura {
+    id: number;
+    tipoDTE: string;
+    fechaGeneracion: string;
+    numeroControl: string;
+    codigoGeneracion: string | null;
+    documentoReceptor: string;
+    receptor: string;
+    documentoReceptor: string | null;
+    tipoDocumento: string | null;
+    numDocumento: string | null;
+    correo: string | null;
+    telefono: string | null;
+    monto: number;
+    selloRecibido: string | null;
+    estado: 'PROCESADO' | 'RECHAZADO' | 'ANULADO' | 'CONTINGENCIA';
+    detallesFactura: DetallesFactura;
+}
+export interface AnulacionData{
+    codigoGeneracionR: string;
+    montoIva: number;
+    tipoDocumento: string | null;
+    numDocumento: string | null;
+    nombre: string | null;
+    telefono: string    | null;
+    correo: string | null;
+    motivoAnulacion: string;
+    nombreResponsable: string | null;
+    tipoDocResponsable: string;
+    numDocResponsable: string;
+    nombreSolicita: string;
+    tipoDocSolicita: string;
+    numDocSolicita: string;
+}
+
+export interface Sale {
+    id: string;
+    date: string;
+    seller: Seller;
+    customer: Customer;
+    items: CartItem[];
+    subtotal: number;
+    tax: number;
+    total: number;
+    status: 'completed' | 'pending';
 }
 
 export interface BodyDocument {
@@ -198,4 +218,34 @@ export interface CreditNotePayload {
     sello_recibido?: strin | null;
     [key: string]: unknown;
     type?: 'fiscal';
+}
+export interface DocumentoDataAnulation {
+    tipoDte: string;
+    codigoGeneracion: string;
+    selloRecibido: string;
+    numeroControl: string;
+    fecEmi: string;
+    montoIva: number;
+    codigoGeneracionR: string | null;
+    tipoDocumento: string;
+    numDocumento: string;
+    nombre: string;
+    telefono: string;
+    correo: string;
+}
+export interface AnulationMotive {
+    tipoAnulacion: number;
+    motivoAnulacion: string;
+    nombreResponsable: string;
+    tipoDocResponsable: string;
+    numDocResponsable: string;
+    nombreSolicita: string;
+    tipoDocSolicita: string;
+    numDocSolicita: string;
+}
+export interface AnulationPayload {
+    identificacion: ID;
+    emisor: Emitter;
+    documento: DocumentoDataAnulation;
+    motivo: AnulationMotive;
 }

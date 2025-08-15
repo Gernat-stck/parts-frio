@@ -74,9 +74,9 @@ export default function FilterAndSearch({
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="todos">Todos los estados</SelectItem>
-                            <SelectItem value="certificada">Certificada</SelectItem>
-                            <SelectItem value="contingencia">Contingencia</SelectItem>
-                            <SelectItem value="anulada">Anulada</SelectItem>
+                            <SelectItem value="PROCESADO">Certificada</SelectItem>
+                            <SelectItem value="CONTINGENCIA">Contingencia</SelectItem>
+                            <SelectItem value="ANULADO">Anulada</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>

@@ -31,7 +31,7 @@ class SaleService
             'month' => 'nullable|integer|min:1|max:12',
             'year' => 'nullable|integer|min:2000|max:' . Carbon::now()->year,
             'perPage' => 'nullable|integer|min:1|max:100',
-            'estado' => 'nullable|string|in:certificada,contingencia,anulada,todos',
+            'estado' => 'nullable|string|in:PROCESADO,CONTINGENCIA,ANULADO,todos',
             'busqueda' => 'nullable|string|max:255',
         ]);
 

@@ -1,5 +1,5 @@
 import { buildResumen } from '@/hooks/use-invoice';
-import { BodyDocument, CreditNotePayload, Emitter, Resumen, Tributos, VentaTercero } from '@/types/invoice.d';
+import { AnulacionData, BodyDocument, CreditNotePayload, Emitter, Factura, Resumen, Tributos, VentaTercero } from '@/types/invoice.d';
 import { v4 as uuidv4 } from 'uuid';
 import { EMITTER_BASE, ID_BASE } from '../constants/companyConstants';
 import { Receiver } from '../types/clientes';
@@ -15,7 +15,11 @@ interface GenerateInvoiceDataParams {
     cuerpoDocumento?: BodyDocument[] | null;
     resumen?: Resumen | null;
 }
-
+interface AnulationProps {
+    invoice: Factura;
+    formData: AnulacionData;
+    tipoAnulacion: number;
+}
 const camposOmitidos: (keyof ID)[] = [
     'tipoDte',
     'numeroControl',
@@ -337,7 +341,6 @@ export function generateInvoiceData({
  */
 export function buildCreditNotePayload(data: CreditNotePayload): CreditNotePayload {
     const numeroDocumento = data?.documentoRelacionado?.[0]?.numeroDocumento;
-    console.log('subtotalVentas', data.resumen.subTotalVentas);
     const date = getDateTime();
     // 1. Emisor: Se seleccionan solo los campos requeridos por el esquema
     const emisor: Emitter = {
@@ -415,5 +418,64 @@ export function buildCreditNotePayload(data: CreditNotePayload): CreditNotePaylo
         ventaTercero: data.ventaTercero,
         extension: null,
         apendice: null,
+    };
+}
+
+/**
+ * Construye el payload para la anulacion de Factura.
+ * @param invoice invoice datos de la factura a anular
+ * @param tipoAnulacion tipo de anulacion a realizar
+ * @param formData datos del formulario de anulacion
+ * @return Un objeto que representa el payload de la anulacion de Factura.
+ */
+export function generateAnulacionPayload({ invoice, formData, tipoAnulacion }: AnulationProps) {
+    const now = getDateTime();
+    const fecAnula = now.fecEmi;
+    const horAnula = now.horEmi;
+
+    return {
+        identificacion: {
+            version: 2,
+            ambiente: ID_BASE.ambiente,
+            codigoGeneracion: generarCodigoGeneracion(),
+            fecAnula,
+            horAnula,
+        },
+        emisor: {
+            nit: EMITTER_BASE.nit,
+            nombre: EMITTER_BASE.nombre,
+            tipoEstablecimiento: EMITTER_BASE.tipoEstablecimiento,
+            nomEstablecimiento: EMITTER_BASE.nombreComercial,
+            codEstableMH: EMITTER_BASE.codEstableMH,
+            codEstable: EMITTER_BASE.codEstable,
+            codPuntoVentaMH: EMITTER_BASE.codPuntoVentaMH,
+            codPuntoVenta: EMITTER_BASE.codPuntoVenta,
+            telefono: EMITTER_BASE.telefono,
+            correo: EMITTER_BASE.correo,
+        },
+        documento: {
+            tipoDte: invoice.tipoDTE,
+            codigoGeneracion: invoice.codigoGeneracion,
+            selloRecibido: invoice.selloRecibido,
+            numeroControl: invoice.numeroControl,
+            fecEmi: invoice.fechaGeneracion.split(' ')[0],
+            montoIva: Number.parseFloat(invoice.detallesFactura.iva.toFixed(2)),
+            codigoGeneracionR: tipoAnulacion === 2 ? null : formData.codigoGeneracionR,
+            tipoDocumento: formData.tipoDocumento,
+            numDocumento: formData.numDocumento,
+            nombre: formData.nombre,
+            telefono: formData.telefono,
+            correo: formData.correo,
+        },
+        motivo: {
+            tipoAnulacion,
+            motivoAnulacion: formData.motivoAnulacion,
+            nombreResponsable: formData.nombreResponsable,
+            tipDocResponsable: formData.tipoDocResponsable,
+            numDocResponsable: formData.numDocResponsable,
+            nombreSolicita: formData.nombreSolicita,
+            tipDocSolicita: formData.tipoDocSolicita,
+            numDocSolicita: formData.numDocSolicita,
+        },
     };
 }

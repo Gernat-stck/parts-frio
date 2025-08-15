@@ -54,7 +54,6 @@ class InvoiceService
      */
     public function storeDte(array $payload, array $response): SalesHistory
     {
-
         return DB::transaction(function () use ($payload, $response) {
             $tipoDte = $payload['identificacion']['tipoDte'] ?? null;
 
@@ -125,6 +124,26 @@ class InvoiceService
                 Log::error("Error al crear el historial de ventas para código de generación {$payload['identificacion']['codigoGeneracion']} ?? 'N/A'}: " . $e->getMessage());
                 throw new \Exception("Error al guardar el historial de ventas.");
             }
+        });
+    }
+
+    /**
+     * Actualizar el estado de un DTE luego de un evento de invalidacion o anulacion.
+     * @param string $codigoGeneracion
+     * @return SalesHistory
+     * @throws Throwable
+     */
+    public function updateStatus(string $codigoGeneracion) {
+        return DB::transaction( function () use ($codigoGeneracion){
+            //Buscar la data de historial de ventas
+            Log::info('Cambiando estado');
+            $salesHistory = SalesHistory::where('codigoGeneracion', $codigoGeneracion)->first();
+            if(!$salesHistory){
+             throw new \Exception("No se encontro el historial de ventas con el codigo de generacion {$codigoGeneracion}");
+            }
+            //Actualizar el estado a 'Anulado
+            $salesHistory->estado = 'ANULADO';
+            $salesHistory->save();
         });
     }
 }

@@ -12,7 +12,7 @@ import { buildContingencyPayload, convertToFormData } from '../../helpers/genera
 import { ServerPagination } from '../ServerPagination';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
-import { DialogAnularFactura } from './anulation-dialog';
+import { AnulacionDialog } from './anulation-dialog';
 import { DialogCertificarFacturas } from './certificate-dialog';
 import FilterAndSearch from './filter-search-component';
 
@@ -40,10 +40,9 @@ export default function HistorialFacturas() {
     const [facturaSeleccionada, setFacturaSeleccionada] = useState<Factura | null>(null);
     const [mostrarAnular, setMostrarAnular] = useState(false);
     const [mostrarCertificar, setMostrarCertificar] = useState(false);
-    const [contraseñaAdmin, setContraseñaAdmin] = useState('');
     const [facturasSeleccionadas, setFacturasSeleccionadas] = useState<string[]>([]);
 
-    const facturasContingencia = facturas?.filter((f) => f.estado === 'rechazada');
+    const facturasContingencia = facturas?.filter((f) => f.estado === 'CONTINGENCIA');
 
     const handlePageChange = (page: number) => {
         router.get(
@@ -71,34 +70,6 @@ export default function HistorialFacturas() {
         setFacturaSeleccionada(factura);
         setMostrarAnular(true);
     };
-
-    const confirmarAnulacion = () => {
-        // En un escenario real, aquí se haría una solicitud al backend
-        // para anular la factura.
-        if (contraseñaAdmin === 'admin123' && facturaSeleccionada) {
-            router.post(
-                route('admin.sales.anular'), // Asegúrate de tener una ruta para esto
-                { id: facturaSeleccionada.id },
-                {
-                    onSuccess: () => {
-                        toast.success('Factura anulada con éxito');
-                        setMostrarAnular(false);
-                        setContraseñaAdmin('');
-                        setFacturaSeleccionada(null);
-                    },
-                    onError: (errors) => {
-                        toast.error(errors.password || 'Contraseña incorrecta');
-                    },
-                },
-            );
-        } else {
-            toast.error('Contraseña incorrecta', {
-                duration: 3000,
-                position: 'top-right',
-            });
-        }
-    };
-
     const handleSeleccionarFactura = (facturaNc: string, seleccionada: boolean) => {
         if (seleccionada) {
             setFacturasSeleccionadas((prev) => [...prev, facturaNc]);
@@ -243,17 +214,17 @@ export default function HistorialFacturas() {
                                             <TableCell>
                                                 <Badge
                                                     variant={
-                                                        factura.selloRecibido
+                                                        factura.estado === 'PROCESADO'
                                                             ? 'default'
-                                                            : factura.estado === 'rechazada'
-                                                              ? 'secondary'
-                                                              : 'destructive'
+                                                            : factura.estado === 'ANULADO'
+                                                              ? 'destructive'
+                                                              : 'secondary'
                                                     }
                                                 >
-                                                    {factura.selloRecibido
+                                                    {factura.estado === 'PROCESADO'
                                                         ? 'Certificada'
-                                                        : factura.estado === 'rechazada'
-                                                          ? 'Rechazada'
+                                                        : factura.estado === 'ANULADO'
+                                                          ? 'Anulado'
                                                           : 'Contingencia'}
                                                 </Badge>
                                             </TableCell>
@@ -277,7 +248,7 @@ export default function HistorialFacturas() {
                                                                 Nota de crédito
                                                             </DropdownMenuItem>
                                                         )}
-                                                        {factura.estado !== 'anulada' && (
+                                                        {factura.estado !== 'ANULADO' && (
                                                             <DropdownMenuItem onClick={() => handleAnularFactura(factura)}>
                                                                 <X className="mr-2 h-4 w-4 text-destructive" />
                                                                 Anular
@@ -325,18 +296,18 @@ export default function HistorialFacturas() {
                                             <div className="flex items-center gap-2">
                                                 <Badge
                                                     variant={
-                                                        factura.selloRecibido
+                                                        factura.estado === 'PROCESADO'
                                                             ? 'default'
-                                                            : factura.estado === 'rechazada'
+                                                            : factura.estado === 'ANULADO'
                                                               ? 'secondary'
                                                               : 'destructive'
                                                     }
                                                     className="text-xs"
                                                 >
-                                                    {factura.selloRecibido
+                                                    {factura.estado === 'PROCESADO'
                                                         ? 'Certificada'
-                                                        : factura.estado === 'rechazada'
-                                                          ? 'Rechazada'
+                                                        : factura.estado === 'ANULADO'
+                                                          ? 'Anulado'
                                                           : 'Contingencia'}
                                                 </Badge>
                                                 <DropdownMenu>
@@ -350,7 +321,7 @@ export default function HistorialFacturas() {
                                                             <Eye className="mr-2 h-4 w-4 text-muted-foreground" />
                                                             Ver detalles
                                                         </DropdownMenuItem>
-                                                        {factura.estado !== 'anulada' && (
+                                                        {factura.estado !== 'ANULADO' && (
                                                             <DropdownMenuItem onClick={() => handleAnularFactura(factura)}>
                                                                 <X className="mr-2 h-4 w-4 text-destructive" />
                                                                 Anular
@@ -408,13 +379,7 @@ export default function HistorialFacturas() {
             </div>
 
             {/* Modal de anulación */}
-            <DialogAnularFactura
-                open={mostrarAnular}
-                onOpenChange={setMostrarAnular}
-                contraseña={contraseñaAdmin}
-                setContraseña={setContraseñaAdmin}
-                onConfirm={confirmarAnulacion}
-            />
+            <AnulacionDialog open={mostrarAnular} onOpenChange={setMostrarAnular} venta={facturaSeleccionada} clearFilter={handleClearFilters}/>
 
             {/* Modal de certificación */}
             <DialogCertificarFacturas
