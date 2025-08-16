@@ -5,9 +5,9 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\MailController;
 
 Route::middleware(['auth', 'verified', 'roles:admin'])->group(function () {
-    Route::get('/admin', [AdminController::class, 'index'])->name('admin.dashboard');
-    Route::get('/admin/dashboard', [AdminController::class, 'index'])->name('admin.dashboard');
+    Route::redirect('/admin', '/admin/dashboard', 301);
 
+    Route::get('/admin/dashboard', [AdminController::class, 'index'])->name('admin.dashboard');
     #region Display the inventory management page
     Route::get('/admin/inventory', [AdminController::class, 'manageInventory'])->name('admin.inventory');
     Route::get('/admin/inventory/create', [AdminController::class, 'createInventory'])->name('admin.inventory.create');
