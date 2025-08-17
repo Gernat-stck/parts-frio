@@ -2,6 +2,7 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import laravel from 'laravel-vite-plugin';
 import { resolve } from 'node:path';
+import externalGlobals from 'rollup-plugin-external-globals';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
@@ -25,12 +26,18 @@ export default defineConfig({
     },
     build: {
         rollupOptions: {
-            output: {
-                manualChunks: {
-                    'pdf-invoice': ['./resources/js/components/invoice/pdf-invoice.tsx'],
-                    'pdf-vendor': ['@react-pdf/renderer'],
-                },
-            },
+            external: ['@react-pdf/renderer'],
+            plugins: [
+                externalGlobals({
+                    '@react-pdf/renderer': 'ReactPDF',
+                }),
+            ],
+            // output: {
+            //     manualChunks: {
+            //         'pdf-invoice': ['./resources/js/components/invoice/pdf-invoice.tsx'],
+            //         'pdf-vendor': ['@react-pdf/renderer'],
+            //     },
+            // },
         },
     },
 });
