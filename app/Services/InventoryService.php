@@ -134,7 +134,7 @@ class InventoryService
 
             if ($request->hasFile('img_product')) {
                 try {
-                    $data['img_product'] = $this->imageStorageService->storeAndGetPath($request->file('img_product'));
+                    $data['img_product'] = $this->imageStorageService->storeProductImage($request->file('img_product'));
                 } catch (Throwable $e) {
                     Log::error("Error al guardar la imagen del producto: " . $e->getMessage());
                     throw new \Exception("Error al procesar la imagen del producto.");
