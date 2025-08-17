@@ -323,4 +323,5 @@ class InventoryService
             'actualizados' => $resultados,
         ];
     }
+    
 }

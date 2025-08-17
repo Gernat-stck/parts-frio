@@ -14,6 +14,7 @@ use App\Http\Resources\SalesHistoryResource;
 use App\Models\User;
 use App\Services\Hacienda\FirmadorService;
 use App\Services\Hacienda\HaciendaService;
+use App\Services\ImageStorageService;
 use App\Services\InventoryService;
 use App\Services\InvoiceService;
 use App\Services\SaleService;
@@ -26,6 +27,7 @@ use Illuminate\Http\Request as HttpRequest;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Vite;
+use Str;
 use Throwable;
 
 class AdminController extends Controller
@@ -36,6 +38,7 @@ class AdminController extends Controller
     protected UserService $userService;
     protected FirmadorService $firmador;
     protected HaciendaService $haciendaService;
+    protected ImageStorageService $imageStorageService;
 
     /**
      * Constructor for AdminController
@@ -46,13 +49,15 @@ class AdminController extends Controller
      * @param UserService $userService
      * @param FirmadorService $firmador
      * @param HaciendaService $haciendaService
+     * @param ImageStorageService $imageStorageService
      */
-    public function __construct(InventoryService $inventoryService, InvoiceService $invoiceService, SaleService $saleService, UserService $userService, FirmadorService $firmador, HaciendaService $haciendaService)
+    public function __construct(InventoryService $inventoryService, InvoiceService $invoiceService, SaleService $saleService, UserService $userService, FirmadorService $firmador, HaciendaService $haciendaService, ImageStorageService $imageStorageService)
     {
         $this->inventoryService = $inventoryService;
         $this->invoiceService = $invoiceService;
         $this->saleService = $saleService;
         $this->userService = $userService;
+        $this->imageStorageService = $imageStorageService;
         $this->firmador = $firmador;
         $this->haciendaService = $haciendaService;
     }
@@ -227,20 +232,29 @@ class AdminController extends Controller
     public function deleteInventoryItem(string $productCode): \Illuminate\Http\RedirectResponse
     {
         try {
-            // Se asume que el método deleteProduct del servicio manejará la lógica de eliminación.
-            // Si no existe, puedes añadirlo o mantener la lógica aquí.
             $product = $this->inventoryService->findProductById($productCode);
             if (!$product) {
                 return redirect()->back()->with('error', 'Producto no encontrado para eliminar.');
             }
 
-            // Aquí podrías añadir un método `deleteProduct` al `InventoryService`
-            // Por ahora, lo mantenemos como estaba en el controlador si no hay lógica compleja.
-            // Ejemplo de llamada al servicio si existiera: $this->inventoryService->deleteProduct($product);
+            // Obtener la ruta de la imagen antes de eliminar el producto
+            $imagePath = $product->img_product;
+
+            // Eliminar el registro del producto en la base de datos
             $deleted = $product->delete();
 
             if (!$deleted) {
                 return redirect()->back()->with('error', 'No se pudo eliminar el producto.');
+            }
+
+            // Eliminar la imagen del almacenamiento solo si el producto se eliminó correctamente
+            if ($imagePath && !Str::startsWith($imagePath, 'http')) {
+                try {
+                    $this->imageStorageService->deleteImage($imagePath);
+                    Log::info("Imagen del producto {$productCode} eliminada exitosamente del almacenamiento.");
+                } catch (Throwable $e) {
+                    Log::warning("No se pudo eliminar la imagen para el producto {$productCode}: " . $e->getMessage());
+                }
             }
 
             Log::info("Producto eliminado exitosamente: {$productCode}");
