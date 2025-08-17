@@ -1,7 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { generateInvoiceData } from '@/helpers/generadores';
-import { usePDFDownload } from '@/hooks/use-pdf-download';
 import type { Receiver } from '@/types/clientes';
 import type { CartItem, InvoicePayload, Payment } from '@/types/invoice';
 import { router } from '@inertiajs/react';
@@ -9,11 +8,11 @@ import axios from 'axios';
 import { Award, Download, FilePlus2Icon, Mail, PrinterIcon as Print } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { usePDFInvoiceActions } from '../../hooks/use-pdf-invoice-actions';
 import LoaderCute from '../loader/loader-page';
 import { ScrollArea } from '../ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { DynamicInvoice } from './dynamic-invoice';
-import { PDFInvoice } from './pdf-invoice';
 
 interface InvoiceStepProps {
     cartItems: CartItem[];
@@ -30,14 +29,13 @@ export default function InvoiceStep({ cartItems, customerData, paymentData, onPr
 
     // Mantén dos piezas: el DTE renderizable y el identificador de venta
     const [invoiceData, setInvoiceData] = useState<InvoicePayload>(generateInvoiceData({ cartItems, customerData, paymentData, dteType }));
-    const [saleId, setSaleId] = useState<number | string | null>(null);
+    const [saleId, setSaleId] = useState<number | string>('');
 
     const invoiceRef = useRef<HTMLDivElement | null>(null);
 
     const [filename, setFilename] = useState<string>(`factura-${invoiceData?.identificacion?.numeroControl || 'sin-control'}`);
 
-    const { downloadPDF, sendDTEEmail, printPDF } = usePDFDownload({ filename });
-
+    const { handleDownloadPDF, handleSendEmail, handlePrint } = usePDFInvoiceActions(filename);
     const onCertificate = async () => {
         if (!invoiceData) {
             toast.error('Datos de factura no generados');
@@ -86,7 +84,7 @@ export default function InvoiceStep({ cartItems, customerData, paymentData, onPr
         localStorage.removeItem('payment');
         localStorage.removeItem('typeDte');
         setIsCertificate(false);
-        setSaleId(null);
+        setSaleId('');
         router.get(route('admin.sales'));
     };
 
@@ -94,61 +92,6 @@ export default function InvoiceStep({ cartItems, customerData, paymentData, onPr
         const id = invoiceData?.identificacion;
         if (!id?.ambiente || !id?.codigoGeneracion || !id?.fecEmi) return undefined;
         return `https://admin.factura.gob.sv/consultaPublica?ambiente=${id.ambiente}&codGen=${id.codigoGeneracion}&fechaEmi=${id.fecEmi}`;
-    };
-
-    const handleDownloadPDF = async () => {
-        try {
-            const qrData = buildQrData();
-            await downloadPDF(<PDFInvoice invoiceData={invoiceData} />, qrData);
-            toast.success('PDF generado exitosamente');
-        } catch (error) {
-            console.error('Error al descargar PDF:', error);
-            toast.error('Error al generar el PDF');
-        }
-    };
-
-    // OPCIONAL: enviar correo. El backend usa su template propio.
-    const handleSendEmail = async () => {
-        if (!isCertificate) {
-            toast.error('Debes certificar antes de enviar el DTE por correo.');
-            return;
-        }
-        if (!saleId) {
-            toast.error('No se obtuvo el identificador de la venta (sale_id).');
-            return;
-        }
-        console.log('ID', saleId);
-        try {
-            setIsLoading(true);
-
-            const qrData = buildQrData();
-
-            // Solo enviamos lo mínimo: PDF y sale_id. El backend arma el template y toma json_enviado.
-            await sendDTEEmail({
-                pdfComponent: <PDFInvoice invoiceData={invoiceData} />,
-                endpoint: route('admin.dte.send'), // Ajusta al endpoint real: p.ej. '/api/dte/send'
-                saleId,
-                qrData,
-                // Si quieres mantenerlo 100% opcional, NO envíes recipient/message aquí.
-                // recipient: invoiceData?.receptor?.correo, // opcional
-                // message: 'Gracias por tu compra...',     // opcional (el backend ya tiene template)
-            });
-
-            toast.success('DTE enviado por correo');
-        } catch (error) {
-            console.error('Error al enviar DTE por correo:', error);
-            toast.error('No se pudo enviar el DTE por correo');
-        } finally {
-            setIsLoading(false);
-        }
-    };
-    const handlePrint = async () => {
-        try {
-            const qrData = buildQrData();
-            await printPDF(<PDFInvoice invoiceData={invoiceData} />, qrData);
-        } catch {
-            toast.error('No se pudo imprimir el documento');
-        }
     };
 
     if (isLoading) {
@@ -187,7 +130,7 @@ export default function InvoiceStep({ cartItems, customerData, paymentData, onPr
                                         <span className="w-full sm:flex-1" aria-describedby={!isCertificate ? 'tooltip-download' : undefined}>
                                             <Button
                                                 variant="outline"
-                                                onClick={handleDownloadPDF}
+                                                onClick={() => handleDownloadPDF(invoiceData, buildQrData())}
                                                 disabled={isLoading || !isCertificate}
                                                 className="w-full bg-transparent" // Elimina la clase sm:flex-1 aquí
                                             >
@@ -208,7 +151,7 @@ export default function InvoiceStep({ cartItems, customerData, paymentData, onPr
                                                 variant="outline"
                                                 disabled={!isCertificate}
                                                 className="w-full bg-transparent"
-                                                onClick={handleSendEmail}
+                                                onClick={() => handleSendEmail(invoiceData, saleId, buildQrData())}
                                             >
                                                 <Mail className="mr-2 h-4 w-4" />
                                                 <span className="hidden sm:inline">Enviar por Email</span>
@@ -228,7 +171,7 @@ export default function InvoiceStep({ cartItems, customerData, paymentData, onPr
                                             <Button
                                                 variant="outline"
                                                 disabled={!isCertificate}
-                                                onClick={handlePrint}
+                                                onClick={() => handlePrint(invoiceData, buildQrData())}
                                                 className="w-full bg-transparent" // Elimina la clase sm:flex-1 aquí
                                             >
                                                 <Print className="mr-2 h-4 w-4" />

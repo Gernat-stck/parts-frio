@@ -13,6 +13,7 @@ export default defineConfig({
         }),
         react(),
         tailwindcss(),
+        //visualizer() as PluginOption,
     ],
     esbuild: {
         jsx: 'automatic',
@@ -20,6 +21,16 @@ export default defineConfig({
     resolve: {
         alias: {
             'ziggy-js': resolve(__dirname, 'vendor/tightenco/ziggy'),
+        },
+    },
+    build: {
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    'pdf-invoice': ['./resources/js/components/invoice/pdf-invoice.tsx'],
+                    'pdf-vendor': ['@react-pdf/renderer'],
+                },
+            },
         },
     },
 });

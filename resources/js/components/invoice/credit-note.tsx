@@ -5,7 +5,7 @@ import { CheckCircle, Download, Eye, Mail, Minus, Printer, Trash2, Zap } from 'l
 import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { calculateResumeTotals } from '../../hooks/use-invoice';
-import { usePDFDownload } from '../../hooks/use-pdf-download';
+import { usePDFInvoiceActions } from '../../hooks/use-pdf-invoice-actions';
 import ClientFormStep from '../client/client-form';
 import LoaderCute from '../loader/loader-page';
 import { Badge } from '../ui/badge';
@@ -20,7 +20,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Textarea } from '../ui/textarea';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { DynamicInvoice } from './dynamic-invoice';
-import { PDFInvoice } from './pdf-invoice';
 import { TributosDialog } from './tributos-dialog';
 
 interface CreditNoteTabsProps {
@@ -42,11 +41,11 @@ export default function CreditNoteTabs({ invoice }: CreditNoteTabsProps) {
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [isCertificate, setIsCertificate] = useState<boolean>(false);
     const invoiceRef = useRef<HTMLDivElement | null>(null);
-    const [saleId, setSaleId] = useState<number | string | null>(null);
+    const [saleId, setSaleId] = useState<number | string>('');
 
     const [filename, setFilename] = useState<string>(`factura-${formData?.identificacion?.numeroControl || 'sin-control'}`);
 
-    const { downloadPDF, sendDTEEmail, printPDF } = usePDFDownload({ filename });
+    const { handleDownloadPDF, handleSendEmail, handlePrint } = usePDFInvoiceActions(filename);
 
     useEffect(() => {
         if (invoice) {
@@ -329,61 +328,6 @@ export default function CreditNoteTabs({ invoice }: CreditNoteTabsProps) {
         const id = formData?.identificacion;
         if (!id?.ambiente || !id?.codigoGeneracion || !id?.fecEmi) return undefined;
         return `https://admin.factura.gob.sv/consultaPublica?ambiente=${id.ambiente}&codGen=${id.codigoGeneracion}&fechaEmi=${id.fecEmi}`;
-    };
-
-    const handleDownloadPDF = async () => {
-        try {
-            const qrData = buildQrData();
-            await downloadPDF(<PDFInvoice invoiceData={formData} />, qrData);
-            toast.success('PDF generado exitosamente');
-        } catch (error) {
-            console.error('Error al descargar PDF:', error);
-            toast.error('Error al generar el PDF');
-        }
-    };
-
-    // OPCIONAL: enviar correo. El backend usa su template propio.
-    const handleSendEmail = async () => {
-        if (!isCertificate) {
-            toast.error('Debes certificar antes de enviar el DTE por correo.');
-            return;
-        }
-        if (!saleId) {
-            toast.error('No se obtuvo el identificador de la venta (sale_id).');
-            return;
-        }
-        console.log('ID', saleId);
-        try {
-            setIsLoading(true);
-
-            const qrData = buildQrData();
-
-            // Solo enviamos lo mínimo: PDF y sale_id. El backend arma el template y toma json_enviado.
-            await sendDTEEmail({
-                pdfComponent: <PDFInvoice invoiceData={formData} />,
-                endpoint: route('admin.dte.send'), // Ajusta al endpoint real: p.ej. '/api/dte/send'
-                saleId,
-                qrData,
-                // Si quieres mantenerlo 100% opcional, NO envíes recipient/message aquí.
-                // recipient: invoiceData?.receptor?.correo, // opcional
-                // message: 'Gracias por tu compra...',     // opcional (el backend ya tiene template)
-            });
-
-            toast.success('DTE enviado por correo');
-        } catch (error) {
-            console.error('Error al enviar DTE por correo:', error);
-            toast.error('No se pudo enviar el DTE por correo');
-        } finally {
-            setIsLoading(false);
-        }
-    };
-    const handlePrint = async () => {
-        try {
-            const qrData = buildQrData();
-            await printPDF(<PDFInvoice invoiceData={formData} />, qrData);
-        } catch {
-            toast.error('No se pudo imprimir el documento');
-        }
     };
 
     return (
@@ -758,7 +702,7 @@ export default function CreditNoteTabs({ invoice }: CreditNoteTabsProps) {
                                             <span className="w-full sm:flex-1" aria-describedby={!isCertificate ? 'tooltip-download' : undefined}>
                                                 <Button
                                                     variant="outline"
-                                                    onClick={handleDownloadPDF}
+                                                    onClick={() => handleDownloadPDF(formData, buildQrData())}
                                                     disabled={isLoading || !isCertificate}
                                                     className="w-full bg-transparent"
                                                 >
@@ -772,7 +716,7 @@ export default function CreditNoteTabs({ invoice }: CreditNoteTabsProps) {
                                                     variant="outline"
                                                     disabled={!isCertificate}
                                                     className="w-full bg-transparent"
-                                                    onClick={handleSendEmail}
+                                                    onClick={() => handleSendEmail(formData, saleId, buildQrData())}
                                                 >
                                                     <Mail className="mr-2 h-4 w-4" />
                                                     <span className="hidden sm:inline">Enviar por Email</span>
@@ -783,8 +727,8 @@ export default function CreditNoteTabs({ invoice }: CreditNoteTabsProps) {
                                                 <Button
                                                     variant="outline"
                                                     disabled={!isCertificate}
-                                                    onClick={handlePrint}
-                                                    className="w-full bg-transparent" 
+                                                    onClick={() => handlePrint(formData, buildQrData())}
+                                                    className="w-full bg-transparent"
                                                 >
                                                     <Printer className="mr-2 h-4 w-4" />
                                                     <span className="hidden sm:inline">Imprimir</span>

@@ -1,5 +1,6 @@
 import { CreditNotePayload, InvoicePayload } from '@/types/invoice';
 import { QRCodeSVG } from 'qrcode.react';
+import { formatCurrency, formatDate } from '../../helpers/pdf-helpers';
 import PF from '../LOGOPARTSFRIOjpg.jpg';
 import { Card } from '../ui/card';
 type BaseResumen = {
@@ -21,20 +22,8 @@ const tipoDteMap: Record<string, string> = {
 
 export function DynamicInvoice({ invoiceData, logoUrl }: DynamicInvoiceProps) {
     const { identificacion, emisor, receptor, cuerpoDocumento, resumen } = invoiceData;
-    console.log('invoice', invoiceData);
-    // Formatear fecha y hora
-    const formatDate = (date: string) => {
-        return new Date(date).toLocaleDateString('es-ES');
-    };
     const tipoDte = tipoDteMap[identificacion.tipoDte] ?? '';
 
-    const formatCurrency = (amount: number, decimales?: number) => {
-        return new Intl.NumberFormat('es-ES', {
-            style: 'currency',
-            currency: identificacion.tipoMoneda || 'USD',
-            minimumFractionDigits: decimales || 2,
-        }).format(amount);
-    };
     const qrUrl = `https://admin.factura.gob.sv/consultaPublica?ambiente=${identificacion.ambiente}&codGen=${identificacion.codigoGeneracion}&fechaEmi=${identificacion.fecEmi}`;
     return (
         <div className="mx-auto max-w-4xl rounded-lg border-2 p-6 shadow-lg">
