@@ -82,8 +82,8 @@ export function ShoppingCartPanel({
                                                 <div className="flex items-start gap-2">
                                                     <div className="relative h-8 w-8 flex-shrink-0 sm:h-10 sm:w-10">
                                                         <img
-                                                            src={item.img_product ? `/private/${item.img_product}` : NoData}
-                                                            alt={item.product_name || 'Producto'}
+                                                            src={item.img_product ?? NoData}
+                                                            alt={item.product_name ?? 'Producto'}
                                                             className="h-full w-full rounded-lg object-cover"
                                                             onError={(e) => {
                                                                 e.currentTarget.src = NoData;

@@ -14,7 +14,7 @@ export default function ItemDetails({ selectedProduct }: { selectedProduct: Prod
                 <div className="lg:col-span-1">
                     <div className="relative mx-auto aspect-square w-full max-w-sm">
                         <img
-                            src={`/private/${selectedProduct.img_product}`}
+                            src={selectedProduct.img_product}
                             alt={selectedProduct.product_name}
                             className="h-full w-full rounded-xl border object-cover shadow-lg"
                             onError={(e) => {
