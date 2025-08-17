@@ -15,7 +15,7 @@ class ImageStorageService
     public function __construct()
     {
         // Usa el disco configurado en .env (FILESYSTEM_DISK)
-        $this->disk = config('filesystems.default', 'public');
+        $this->disk = 'public';
     }
 
     /**
@@ -87,35 +87,6 @@ class ImageStorageService
         } catch (Throwable $e) {
             Log::error("Error al eliminar la imagen '{$path}': " . $e->getMessage());
             return false;
-        }
-    }
-
-    /**
-     * Guarda la imagen y devuelve el path relativo (por ejemplo, para guardar en la base de datos).
-     *
-     * @param UploadedFile $image El archivo de imagen a almacenar.
-     * @return string La ruta relativa de la imagen dentro del disco.
-     * @throws \Exception Si el archivo no es válido o ocurre un error al almacenar.
-     */
-    public function storeAndGetPath(UploadedFile $image): string
-    {
-        if (!$image->isValid()) {
-            Log::error("Archivo de imagen inválido proporcionado en storeAndGetPath.");
-            throw new \InvalidArgumentException("El archivo de imagen proporcionado no es válido.");
-        }
-
-        try {
-            $filename = Str::uuid() . '.' . $image->getClientOriginalExtension();
-            $path = $image->storeAs('products', $filename, $this->disk);
-
-            if (!$path) {
-                throw new \Exception("No se pudo almacenar la imagen y obtener la ruta.");
-            }
-            Log::info("Imagen de producto almacenada (solo path): {$path}");
-            return $path;
-        } catch (Throwable $e) {
-            Log::error("Error al almacenar la imagen y obtener la ruta: " . $e->getMessage());
-            throw new \Exception("Error al almacenar la imagen y obtener la ruta: " . $e->getMessage());
         }
     }
 }

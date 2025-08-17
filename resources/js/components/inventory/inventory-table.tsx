@@ -63,7 +63,7 @@ export const InventoryTable = ({ data, isAdmin, onEdit, onDelete, onAddStock }: 
                                                 >
                                                     <div className="relative h-12 max-h-16 w-12 md:h-16 md:w-16">
                                                         <img
-                                                            src={`/private/${item.img_product}`}
+                                                            src={`/${item.img_product}`}
                                                             alt={item.product_name}
                                                             className="h-full w-full rounded-lg object-cover"
                                                             onError={(e) => {
