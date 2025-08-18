@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  app-dev:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: partsfrio-dev
+    volumes:
+      - .:/var/www/html
+      - ./storage:/var/www/html/storage
+      - ./envs/.env.dev:/var/www/html/.env
+    depends_on:
+      - pgsql
+      - svfe-api-firmador
+
+  app-prod:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: partsfrio-prod
+    volumes:
+      - .:/var/www/html
+      - ./storage:/var/www/html/storage
+      - ./envs/.env.prod:/var/www/html/.env
+    depends_on:
+      - pgsql
+      - svfe-api-firmador
+
+  svfe-api-firmador:
+    image: svfe/svfe-api-firmador:v20230109
+    container_name: svfe-api-firmador
+    ports:
+      - '8113:8113'
+    volumes:
+      - ./docker/firmador/temp:/uploads
+
+  pgsql:
+    image: postgres:15
+    container_name: partsfrio-db
+    environment:
+      POSTGRES_DB: partsfrio
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  nginx:
+    image: nginx:stable
+    container_name: partsfrio-nginx
+    ports:
+      - '80:80'
+    volumes:
+      - .:/var/www/html
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - app-prod
+
+volumes:
+  pgdata:
