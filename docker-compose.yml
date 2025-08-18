@@ -6,8 +6,8 @@ services:
     container_name: partsfrio-dev
     volumes:
       - .:/var/www/html
-      - ./storage:/var/www/html/storage
-      - ./envs/.env.dev:/var/www/html/.env
+      - storage_dev:/var/www/html/storage
+      - env_dev:/var/www/html/.env
     depends_on:
       - postgres
       - svfe-api-firmador
@@ -19,8 +19,8 @@ services:
     container_name: partsfrio-prod
     volumes:
       - .:/var/www/html
-      - ./storage:/var/www/html/storage
-      - ./envs/.env.prod:/var/www/html/.env
+      - storage_prod:/var/www/html/storage
+      - env_prod:/var/www/html/.env
     depends_on:
       - postgres
       - svfe-api-firmador
@@ -31,7 +31,7 @@ services:
     ports:
       - '8113:8113'
     volumes:
-      - ./docker/firmador/temp:/uploads
+      - firmador_temp:/uploads
 
   postgres:
     image: postgres:15
@@ -45,17 +45,25 @@ services:
     ports:
       - "5432:5432"
 
-
   nginx:
     image: nginx:stable
     container_name: partsfrio-nginx
     ports:
       - '80:80'
+      - '443:443'
     volumes:
       - .:/var/www/html
       - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - nginx_certs:/etc/nginx/certs
     depends_on:
       - app-prod
+      - app-dev
 
 volumes:
   pgdata:
+  firmador_temp:
+  storage_dev:
+  storage_prod:
+  env_dev:
+  env_prod:
+  nginx_certs:
