@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   app-dev:
     build:
@@ -11,7 +9,7 @@ services:
       - ./storage:/var/www/html/storage
       - ./envs/.env.dev:/var/www/html/.env
     depends_on:
-      - pgsql
+      - postgres
       - svfe-api-firmador
 
   app-prod:
@@ -24,7 +22,7 @@ services:
       - ./storage:/var/www/html/storage
       - ./envs/.env.prod:/var/www/html/.env
     depends_on:
-      - pgsql
+      - postgres
       - svfe-api-firmador
 
   svfe-api-firmador:
