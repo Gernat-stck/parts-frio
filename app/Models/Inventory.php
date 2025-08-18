@@ -58,5 +58,6 @@ class Inventory extends Model
         'uniMedida' => 'integer',
         'tipo_item' => TipoItem::class,
         'tributos' => 'array',
+        'img_product' => 'string'
     ];
 }
