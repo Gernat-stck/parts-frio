@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   app-dev:
     build:
@@ -64,8 +62,6 @@ volumes:
   firmador_temp:
   storage_dev:
   storage_prod:
-  env_dev:
-  env_prod:
 
 networks:
   partsfrio-net:
