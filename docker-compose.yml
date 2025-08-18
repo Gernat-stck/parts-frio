@@ -60,5 +60,4 @@ services:
       - app-prod
 
 volumes:
-  - pgdata:/var/lib/postgresql/data
-  - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+  pgdata:
