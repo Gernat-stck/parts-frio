@@ -2,23 +2,26 @@ FROM php:8.2-fpm
 
 # Instalar dependencias del sistema
 RUN apt-get update && apt-get install -y \
-    libpq-dev zip unzip git curl npm \
+    libpq-dev zip unzip git curl nodejs npm \
     && docker-php-ext-install pdo_pgsql bcmath
 
 # Instalar Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Establecer directorio de trabajo
 WORKDIR /var/www/html
 
-# Copiar archivos del proyecto
+# Copiar solo archivos de dependencias primero para aprovechar el cache
+COPY composer.json composer.lock package.json package-lock.json ./
+
+# Instalar dependencias PHP y JS
+RUN composer install --no-dev --optimize-autoloader
+RUN npm install && npm run build
+
+# Copiar el resto del proyecto
 COPY . .
 
-# Instalar dependencias PHP
-RUN composer install --no-dev --optimize-autoloader
-
-# Instalar dependencias JS y compilar frontend
-RUN npm install && npm run build
+# Asegurar permisos correctos
+RUN chown -R www-data:www-data storage bootstrap/cache
 
 # Ejecutar comandos Artisan
 RUN php artisan config:cache \
@@ -26,12 +29,8 @@ RUN php artisan config:cache \
  && php artisan view:cache \
  && php artisan storage:link
 
-# Copiar el entrypoint
 COPY docker/php/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Definir el script de entrada
 ENTRYPOINT ["/entrypoint.sh"]
-
-# Servir con PHP-FPM
 CMD ["php-fpm"]
