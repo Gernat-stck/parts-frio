@@ -11,7 +11,7 @@ services:
     volumes:
       - .:/var/www/html
       - storage_dev:/var/www/html/storage
-      - ./env_dev:/var/www/html/.env
+      - ./.env_dev:/var/www/html/.env
     depends_on:
       - postgres
       - svfe-api-firmador
@@ -28,7 +28,7 @@ services:
     volumes:
       - .:/var/www/html
       - storage_prod:/var/www/html/storage
-      - ./env_prod:/var/www/html/.env
+      - ./.env_prod:/var/www/html/.env
     depends_on:
       - postgres
       - svfe-api-firmador
