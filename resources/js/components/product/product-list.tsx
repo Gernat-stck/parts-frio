@@ -21,7 +21,7 @@ export function ProductList({ products, cart = [], onAddToCart }: ProductListPro
                     <div key={product.id} className="flex items-center gap-3 border p-3 transition-transform hover:scale-97 hover:transform">
                         <div className="relative h-12 w-12 flex-shrink-0">
                             <img
-                                src={`/${product.img_product}`}
+                                src={product.img_product}
                                 alt={product.product_name}
                                 className="h-full w-full rounded-lg object-cover"
                                 onError={(e) => {

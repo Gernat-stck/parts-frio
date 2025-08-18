@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     {{-- Inline script to detect system dark mode preference and apply it immediately --}}
+    <script src="https://unpkg.com/@react-pdf/renderer@3.4.5/dist/react-pdf.umd.js"></script>
     <script>
         (function() {
             const appearance = '{{ $appearance ?? "system" }}';

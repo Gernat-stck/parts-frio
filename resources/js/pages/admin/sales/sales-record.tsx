@@ -14,7 +14,7 @@ export default function SalesRecord() {
     return (
         <AppLayout breadcrumbs={breadcrumbs} mainNavItems={adminNavItems}>
             <Head title="Historial de ventas por clientes" />
-            <main className="container mx-auto h-[calc(100vh-5rem)] p-2">
+            <main className="container mx-auto h-[calc(100vh-5rem)] p-10 lg:p-5">
                 <GestionClientes />
             </main>
         </AppLayout>

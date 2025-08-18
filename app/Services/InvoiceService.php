@@ -17,32 +17,19 @@ class InvoiceService
      * @param string $tipoDte El tipo de documento electrónico (e.g., 'fc', 'ccf', 'anulacion').
      * @return string La ruta al archivo de esquema JSON.
      */
-    public function getSchemaUrl(string $tipoDte): string
+    public function getSchemaFullPath(string $tipoDte): string
     {
-        switch ($tipoDte) {
-            case '01':
-            default:
-                $schemaUrl =  'app/private/schemas/fe-fc-v1.json';
-                break;
-
-            case '03':
-                $schemaUrl = 'app/private/schemas/fe-ccf-v3.json';
-                break;
-
-            case '05':
-                $schemaUrl = 'app/private/schemas/fe-nc-v3.json';
-                break;
-
-            case 'contingencia':
-                $schemaUrl = 'app/private/schemas/contingencia-schema-v3.json';
-                break;
-
-            case 'anulacion':
-                $schemaUrl = 'app/private/schemas/anulacion-schema-v2.json';
-                break;
-        }
-        return $schemaUrl;
+        return match ($tipoDte) {
+            '01' => storage_path('app/schemas/fe-fc-v1.json'),
+            '03' => storage_path('app/schemas/fe-ccf-v3.json'),
+            '05' => storage_path('app/schemas/fe-nc-v3.json'),
+            'contingencia' => storage_path('app/schemas/contingencia-schema-v3.json'),
+            'anulacion' => storage_path('app/schemas/anulacion-schema-v2.json'),
+            default => storage_path('app/schemas/fe-fc-v1.json'),
+        };
     }
+
+
 
     /**
      * Guarda el historial de ventas y los datos del receptor de una factura electrónica.
@@ -133,13 +120,14 @@ class InvoiceService
      * @return SalesHistory
      * @throws Throwable
      */
-    public function updateStatus(string $codigoGeneracion) {
-        return DB::transaction( function () use ($codigoGeneracion){
+    public function updateStatus(string $codigoGeneracion)
+    {
+        return DB::transaction(function () use ($codigoGeneracion) {
             //Buscar la data de historial de ventas
             Log::info('Cambiando estado');
             $salesHistory = SalesHistory::where('codigoGeneracion', $codigoGeneracion)->first();
-            if(!$salesHistory){
-             throw new \Exception("No se encontro el historial de ventas con el codigo de generacion {$codigoGeneracion}");
+            if (!$salesHistory) {
+                throw new \Exception("No se encontro el historial de ventas con el codigo de generacion {$codigoGeneracion}");
             }
             //Actualizar el estado a 'Anulado
             $salesHistory->estado = 'ANULADO';

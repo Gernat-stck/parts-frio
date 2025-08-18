@@ -40,27 +40,11 @@ class ImageStorageService
                 throw new \Exception("No se pudo almacenar la imagen en el disco '{$this->disk}'.");
             }
             Log::info("Imagen de producto almacenada: {$path}");
-            return $this->getImageUrl($path);
+            // ¡Devuelve solo la ruta relativa!
+            return  $path;
         } catch (Throwable $e) {
             Log::error("Error al almacenar la imagen del producto: " . $e->getMessage());
             throw new \Exception("Error al almacenar la imagen: " . $e->getMessage());
-        }
-    }
-
-    /**
-     * Devuelve la URL pública de una imagen almacenada.
-     *
-     * @param string $path La ruta relativa de la imagen dentro del disco.
-     * @return string La URL pública completa de la imagen.
-     */
-    public function getImageUrl(string $path): string
-    {
-        try {
-            return Storage::disk($this->disk)->url($path);
-        } catch (Throwable $e) {
-            Log::error("Error al obtener la URL de la imagen para la ruta '{$path}': " . $e->getMessage());
-            // Dependiendo del contexto, se podría devolver una URL de placeholder o lanzar una excepción.
-            return ''; // Devolver cadena vacía o URL de fallback
         }
     }
 

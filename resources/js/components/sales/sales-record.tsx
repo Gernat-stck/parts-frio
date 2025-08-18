@@ -71,10 +71,9 @@ export default function GestionClientes() {
         return () => clearTimeout(timeout);
     }, [busqueda]);
     return (
-        <div className="container mx-auto space-y-4 p-2 sm:p-4 ">
-            {/* Header - Compact */}
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="space-y-1">
+        <div className="container mx-auto space-y-4 lg:space-y-2">
+            <div className="flex max-h-20 flex-col sm:flex-row sm:items-center sm:justify-between">
+                <div>
                     <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Gestión de Clientes</h1>
                     <p className="text-sm text-muted-foreground">Consulta y gestiona la información de tus clientes</p>
                 </div>
@@ -84,10 +83,9 @@ export default function GestionClientes() {
                 </div>
             </div>
 
-            {/* Search Section - Compact */}
             <Card>
-                <CardContent className="flex flex-wrap items-center gap-4 md:justify-between">
-                    <div className="flex shrink-0 items-center gap-2">
+                <CardContent className="flex flex-wrap items-center md:justify-between">
+                    <div className="flex shrink-0 items-center gap-2 lg:h-6">
                         <Search className="h-4 w-4" />
                         Buscar Clientes
                         {busqueda && (
@@ -118,12 +116,10 @@ export default function GestionClientes() {
                 </CardContent>
             </Card>
 
-            {/* Results Section - Flexible */}
             {clientes.length > 0 ? (
-                <div className="">
-                    {/* Table Card */}
+                <div>
                     <Card className="h-full">
-                        <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between md:max-h-10 lg:max-h-3">
                             <CardTitle className="text-base">Clientes Registrados</CardTitle>
                             <div className="flex items-center gap-2">
                                 <Badge variant="outline" className="text-xs">
@@ -136,13 +132,12 @@ export default function GestionClientes() {
                                 )}
                             </div>
                         </CardHeader>
-                        <CardContent className="overflow-x-auto">
-                                <ClienteTable clientes={clientes} onVerHistorial={handleVerHistorial} />
+                        <CardContent>
+                            <ClienteTable clientes={clientes} onVerHistorial={handleVerHistorial} />
                         </CardContent>
                     </Card>
 
-                    {/* Pagination - Fixed at bottom */}
-                    <div className="flex justify-center mt-2">
+                    <div className="mt-3 flex justify-center">
                         <ServerPagination
                             meta={pagination}
                             links={links}
@@ -153,7 +148,6 @@ export default function GestionClientes() {
                     </div>
                 </div>
             ) : (
-                /* Empty State */
                 <Card className="h-full">
                     <CardContent className="flex h-full items-center justify-center">
                         <div className="text-center">
@@ -175,7 +169,6 @@ export default function GestionClientes() {
                 </Card>
             )}
 
-            {/* Modal */}
             <ClienteHistorialDialog open={mostrarHistorial} onOpenChange={setMostrarHistorial} cliente={clienteSeleccionado} />
         </div>
     );

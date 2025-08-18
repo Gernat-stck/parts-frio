@@ -24,7 +24,7 @@ export default function EditItem({ product_code, product, categories }: EditItem
     return (
         <AppLayout breadcrumbs={breadcrumbs} mainNavItems={adminNavItems}>
             <Head title="Editar producto" />
-            <main className="container mx-auto h-[calc(100vh-5rem)]">
+            <main className="container mx-auto h-[calc(100vh-5rem)] p-2">
                 <ProductForm mode="edit" initialData={product.data} categories={categories} />
             </main>
         </AppLayout>

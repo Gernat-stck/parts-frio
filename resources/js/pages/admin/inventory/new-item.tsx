@@ -19,7 +19,7 @@ export default function NewItem({ categories }: { categories: string[] }) {
     return (
         <AppLayout breadcrumbs={breadcrumbs} mainNavItems={adminNavItems}>
             <Head title="Crear nuevo producto" />
-            <main className="container mx-auto h-[calc(100vh-5rem)]">
+            <main className="container mx-auto h-[calc(100vh-5rem)] p-2">
                 <ProductForm mode="create" categories={categories} />
             </main>
         </AppLayout>

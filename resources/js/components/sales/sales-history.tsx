@@ -130,7 +130,7 @@ export default function HistorialFacturas() {
         return () => clearTimeout(timeout);
     }, [busqueda, filtroEstado, mes, anio]);
     return (
-        <div className="container mx-auto space-y-4 p-2 sm:p-4 lg:p-6">
+        <div className="container mx-auto space-y-4 lg:space-y-2">
             {/* Header Section - Responsive */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="space-y-1">
@@ -190,15 +190,25 @@ export default function HistorialFacturas() {
                                         <TableRow key={factura.id} className="transition-colors hover:bg-muted/30">
                                             <TableCell className="text-center text-sm">{factura.tipoDTE}</TableCell>
                                             <TableCell className="text-sm">{factura.fechaGeneracion}</TableCell>
-                                            <TableCell>
+                                                                                      <Tooltip>
+
+                                           <TooltipTrigger asChild>
+                                                    <TableCell className="max-w-55 truncate overflow-hidden text-sm font-medium whitespace-nowrap">
                                                 {factura.codigoGeneracion ? (
+                                                    
                                                     <code className="text-sm text-blue-600">{factura.numeroControl}</code>
                                                 ) : (
                                                     <Badge variant="outline" className="text-orange-600">
                                                         Sin código
                                                     </Badge>
                                                 )}
+
+                                                <TooltipContent>
+                                                    <span>{factura.codigoGeneracion ? factura.numeroControl : 'Sin código'}</span>
+                                                </TooltipContent>
                                             </TableCell>
+                                            </TooltipTrigger>
+                                            </Tooltip>
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
                                                     <TableCell className="max-w-60 truncate overflow-hidden text-sm font-medium whitespace-nowrap">
@@ -368,7 +378,7 @@ export default function HistorialFacturas() {
             </div>
 
             {/* Responsive Pagination */}
-            <div className="flex justify-center">
+            <div className="flex justify-center mt-5 lg:mt-2 ">
                 <ServerPagination
                     meta={pagination}
                     links={links}

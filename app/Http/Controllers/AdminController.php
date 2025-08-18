@@ -14,6 +14,7 @@ use App\Http\Resources\SalesHistoryResource;
 use App\Models\User;
 use App\Services\Hacienda\FirmadorService;
 use App\Services\Hacienda\HaciendaService;
+use App\Services\ImageStorageService;
 use App\Services\InventoryService;
 use App\Services\InvoiceService;
 use App\Services\SaleService;
@@ -26,6 +27,7 @@ use Illuminate\Http\Request as HttpRequest;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Vite;
+use Str;
 use Throwable;
 
 class AdminController extends Controller
@@ -36,6 +38,7 @@ class AdminController extends Controller
     protected UserService $userService;
     protected FirmadorService $firmador;
     protected HaciendaService $haciendaService;
+    protected ImageStorageService $imageStorageService;
 
     /**
      * Constructor for AdminController
@@ -46,13 +49,15 @@ class AdminController extends Controller
      * @param UserService $userService
      * @param FirmadorService $firmador
      * @param HaciendaService $haciendaService
+     * @param ImageStorageService $imageStorageService
      */
-    public function __construct(InventoryService $inventoryService, InvoiceService $invoiceService, SaleService $saleService, UserService $userService, FirmadorService $firmador, HaciendaService $haciendaService)
+    public function __construct(InventoryService $inventoryService, InvoiceService $invoiceService, SaleService $saleService, UserService $userService, FirmadorService $firmador, HaciendaService $haciendaService, ImageStorageService $imageStorageService)
     {
         $this->inventoryService = $inventoryService;
         $this->invoiceService = $invoiceService;
         $this->saleService = $saleService;
         $this->userService = $userService;
+        $this->imageStorageService = $imageStorageService;
         $this->firmador = $firmador;
         $this->haciendaService = $haciendaService;
     }
@@ -93,7 +98,7 @@ class AdminController extends Controller
         try {
             $products = $this->inventoryService->getAllProducts();
             return Inertia::render('admin/inventory/inventory', [
-                'products' => ProductResource::collection($products), // Usar ProductResource si existe
+                'products' => ProductResource::collection($products),
             ]);
         } catch (Throwable $e) {
             Log::error("Error al cargar la página de gestión de inventario: " . $e->getMessage());
@@ -227,20 +232,29 @@ class AdminController extends Controller
     public function deleteInventoryItem(string $productCode): \Illuminate\Http\RedirectResponse
     {
         try {
-            // Se asume que el método deleteProduct del servicio manejará la lógica de eliminación.
-            // Si no existe, puedes añadirlo o mantener la lógica aquí.
             $product = $this->inventoryService->findProductById($productCode);
             if (!$product) {
                 return redirect()->back()->with('error', 'Producto no encontrado para eliminar.');
             }
 
-            // Aquí podrías añadir un método `deleteProduct` al `InventoryService`
-            // Por ahora, lo mantenemos como estaba en el controlador si no hay lógica compleja.
-            // Ejemplo de llamada al servicio si existiera: $this->inventoryService->deleteProduct($product);
+            // Obtener la ruta de la imagen antes de eliminar el producto
+            $imagePath = $product->img_product;
+
+            // Eliminar el registro del producto en la base de datos
             $deleted = $product->delete();
 
             if (!$deleted) {
                 return redirect()->back()->with('error', 'No se pudo eliminar el producto.');
+            }
+
+            // Eliminar la imagen del almacenamiento solo si el producto se eliminó correctamente
+            if ($imagePath && !Str::startsWith($imagePath, 'http')) {
+                try {
+                    $this->imageStorageService->deleteImage($imagePath);
+                    Log::info("Imagen del producto {$productCode} eliminada exitosamente del almacenamiento.");
+                } catch (Throwable $e) {
+                    Log::warning("No se pudo eliminar la imagen para el producto {$productCode}: " . $e->getMessage());
+                }
             }
 
             Log::info("Producto eliminado exitosamente: {$productCode}");
@@ -358,7 +372,7 @@ class AdminController extends Controller
     public function createSale(): \Inertia\Response
     {
         try {
-            $availableProducts = $this->inventoryService->getAllProducts(); // Usar el servicio
+            $availableProducts = $this->inventoryService->getAllProducts();
             return Inertia::render('admin/sales/sale-point/sales', [
                 'availableProducts' => ProductResource::collection($availableProducts)
             ]);
@@ -384,8 +398,7 @@ class AdminController extends Controller
             // Obtén los datos del payload de 'invoiceData'
             $payload = $request->input('invoiceData');
             $isAnulacion = $tipoDte === 'anulacion';
-            $schemaUrl = $this->invoiceService->getSchemaUrl($tipoDte);
-            $schemaPath = storage_path($schemaUrl);
+            $schemaPath = $this->invoiceService->getSchemaFullPath($tipoDte);
 
             if (!file_exists($schemaPath)) {
                 Log::error("Esquema no encontrado para tipoDte: {$tipoDte} en {$schemaPath}");
@@ -393,6 +406,11 @@ class AdminController extends Controller
             }
 
             $schema = json_decode(file_get_contents($schemaPath));
+            if (!isset($schema->{'$schema'}) && !isset($schema->type)) {
+                Log::error("Esquema JSON inválido o incompleto para tipoDte {$tipoDte}");
+                return response()->json(['error' => 'Esquema JSON inválido o incompleto.'], 500);
+            }
+
             if (json_last_error() !== JSON_ERROR_NONE) {
                 Log::error("Error al decodificar esquema JSON para tipoDte {$tipoDte}: " . json_last_error_msg());
                 return response()->json(['error' => 'Error de configuración: Esquema DTE inválido.'], 500);

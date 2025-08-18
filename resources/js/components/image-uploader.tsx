@@ -17,7 +17,6 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
     onChange,
     label = 'Imagen del producto',
     name = 'img_product',
-    previewPath = '/storage/products/',
     originalValue = '',
 }) => {
     const inputRef = useRef<HTMLInputElement>(null);
@@ -47,9 +46,9 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
     };
 
     const renderPreview = () => {
-        const src = value.startsWith('data:image') ? value : `${previewPath}${value}`;
+        const src = value.startsWith('data:image') ? value : `${value}`;
         return (
-            <div className="relative h-28 w-28 overflow-hidden rounded-lg border shadow-sm">
+            <div className="relative h-20 w-20 overflow-hidden rounded-lg border shadow-sm">
                 <img src={src} alt="Vista previa" className="h-full w-full object-cover" />
                 <button
                     type="button"
@@ -65,7 +64,7 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
 
     return (
         <div className="space-y-2">
-            <Label htmlFor={name} className="block text-sm font-medium text-gray-700">
+            <Label htmlFor={name} className="block text-sm font-medium text-accent-foreground/70">
                 {label}
             </Label>
 
@@ -74,7 +73,7 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
                     {value && renderPreview()}
                     <div>
                         <Input id={name} type="file" accept="image/*" ref={inputRef} onChange={handleFileChange} className="text-sm" />
-                        <p className="mt-1 text-xs text-gray-500">Formatos permitidos: JPG, PNG, GIF. Máx: 2MB</p>
+                        <p className="mt-1 text-xs text-accent/70">Formatos permitidos: JPG, PNG, GIF. Máx: 2MB</p>
                     </div>
                 </div>
             </div>

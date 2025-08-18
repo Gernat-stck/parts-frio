@@ -1,9 +1,8 @@
-import { Users } from 'lucide-react';
 import { useState } from 'react';
 import type { ClienteRecord } from '../../types/clientes';
-import { Card, CardContent } from '../ui/card';
+import { Card } from '../ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
-import ClienteRow from './client-row';
+import ClientRowRes from './cliente-row';
 
 export default function ClienteTable({
     clientes,
@@ -16,61 +15,33 @@ export default function ClienteTable({
     const [paginatedClientes] = useState<ClienteRecord[]>(clientes || []);
 
     return (
-        <div className="space-y-2">
-            {/* Desktop Table View */}
-            <div className="hidden lg:block">
-                <div className="overflow-x-auto rounded-md border">
-                    <Table>
-                        <TableHeader>
-                            <TableRow className="bg-muted/40">
-                                <TableHead className="text-xs font-semibold">Nombre</TableHead>
-                                <TableHead className="text-xs font-semibold">Teléfono</TableHead>
-                                <TableHead className="text-xs font-semibold">Identificación</TableHead>
-                                <TableHead className="text-xs font-semibold">Email</TableHead>
-                                <TableHead className="text-xs font-semibold">Compras</TableHead>
-                                <TableHead className="text-right text-xs font-semibold">Monto Total</TableHead>
-                                <TableHead className="text-center text-xs font-semibold">Acciones</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {paginatedClientes.length > 0 ? (
-                                paginatedClientes.map((cliente) => (
-                                    <ClienteRow key={cliente.id} cliente={cliente} onVerHistorial={onVerHistorial} isMobile={false} />
-                                ))
-                            ) : (
-                                <TableRow>
-                                    <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
-                                        <div className="flex flex-col items-center gap-2">
-                                            <Users className="h-8 w-8 opacity-50" />
-                                            <span>No se encontraron clientes</span>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </div>
-            </div>
+        <Card className="border-0 shadow-sm lg:p-0">
+                <Table>
+                    {/* Desktop Headers - Hidden on mobile */}
+                    <TableHeader className="hidden lg:table-header-group">
+                        <TableRow className="border-b border-border/50">
+                            <TableHead className="font-semibold text-foreground">Nombre</TableHead>
+                            <TableHead className="font-semibold text-foreground">Teléfono</TableHead>
+                            <TableHead className="font-semibold text-foreground">Identificación</TableHead>
+                            <TableHead className="font-semibold text-foreground">Email</TableHead>
+                            <TableHead className="text-right font-semibold text-foreground">Compras</TableHead>
+                            <TableHead className="text-right font-semibold text-foreground">Acciones</TableHead>
+                        </TableRow>
+                    </TableHeader>
 
-            {/* Mobile/Tablet Card View */}
-            <div className="lg:hidden">
-                {paginatedClientes.length > 0 ? (
-                    <div className="space-y-3">
-                        {paginatedClientes.map((cliente) => (
-                            <ClienteRow key={cliente.id} cliente={cliente} onVerHistorial={onVerHistorial} isMobile={true} />
-                        ))}
-                    </div>
-                ) : (
-                    <Card>
-                        <CardContent className="py-8 text-center text-muted-foreground">
-                            <div className="flex flex-col items-center gap-2">
-                                <Users className="h-12 w-12 opacity-50" />
-                                <p className="text-sm sm:text-base">No se encontraron clientes</p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
-            </div>
-        </div>
+                    {/* Mobile Header - Hidden on desktop */}
+                    <TableBody>
+                        {paginatedClientes.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                                    No se encontraron clientes
+                                </TableCell>
+                            </TableRow>
+                        ) : (
+                            paginatedClientes.map((client) => <ClientRowRes key={client.id} cliente={client} onVerHistorial={onVerHistorial} />)
+                        )}
+                    </TableBody>
+                </Table>
+        </Card>
     );
 }

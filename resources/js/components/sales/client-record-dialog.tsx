@@ -1,12 +1,29 @@
-import { Calendar, IdCard, Mail, MapPin, Phone, ShoppingBag, User } from 'lucide-react';
-import { formatUbicacion } from '../../helpers/get-labels';
-import type { ClienteRecord as Cliente } from '../../types/clientes';
+import { Calendar, BadgeIcon as IdCard, Mail, MapPin, Phone, ShoppingBag, User } from 'lucide-react';
+import type { ClienteRecord as Cliente, Compra } from '../../types/clientes';
 import { Badge } from '../ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
-import CompraCard from './compra-card';
+
+function CompraCard({ compra }: { compra: Compra }) {
+    return (
+        <Card className="border-l-4 border-l-blue-500">
+            <CardContent className="p-3">
+                <div className="mb-2 flex items-start justify-between">
+                    <div>
+                        <p className="font-semibold">{compra.factura}</p>
+                        <p className="text-sm text-muted-foreground">{compra.fecha}</p>
+                    </div>
+                    <p className="font-bold text-green-600">${compra.monto.toFixed(2)}</p>
+                </div>
+                <div className="text-xs text-muted-foreground">{compra.productos.join(', ')}</div>
+            </CardContent>
+        </Card>
+    );
+}
+
+
 
 export default function ClienteHistorialDialog({
     open,
@@ -18,8 +35,7 @@ export default function ClienteHistorialDialog({
     cliente: Cliente | null;
 }) {
     if (!cliente) return null;
-    const address = formatUbicacion(cliente.address);
-    return (
+ return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="mx-2 flex h-[95vh] w-[calc(100vw-1rem)] max-w-5xl flex-col overflow-hidden sm:mx-4 sm:h-[85vh] sm:w-[95vw] lg:w-[90vw] xl:max-w-6xl">
                 {/* Header - Fixed */}
@@ -62,8 +78,9 @@ export default function ClienteHistorialDialog({
                                         <div className="space-y-1">
                                             <div className="flex items-center gap-1 text-xs text-muted-foreground">
                                                 <MapPin className="h-3 w-3" />
+                                                Ubicación
                                             </div>
-                                            <p className="text-sm">{address}</p>
+                                            <p className="text-sm">{cliente.address}</p>
                                         </div>
                                         <div className="space-y-1">
                                             <div className="flex items-center gap-1 text-xs text-muted-foreground">

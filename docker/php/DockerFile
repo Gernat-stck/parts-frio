@@ -1,0 +1,22 @@
+FROM php:8.2-fpm
+
+# Instalar dependencias
+RUN apt-get update && apt-get install -y \
+    libpq-dev zip unzip git curl npm \
+    && docker-php-ext-install pdo_pgsql bcmath
+
+# Instalar Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Copiar el script de entrada
+COPY docker/php/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Establecer directorio de trabajo
+WORKDIR /var/www/html
+
+# Definir el script de entrada
+ENTRYPOINT ["/entrypoint.sh"]
+
+# Comando por defecto (puede ser php-fpm o artisan serve)
+CMD ["php-fpm"]
