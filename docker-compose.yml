@@ -1,9 +1,13 @@
+version: '3.8'
+
 services:
   app-dev:
     build:
       context: .
       dockerfile: docker/php/Dockerfile
     container_name: partsfrio-dev
+    ports:
+      - '9001:9000' # expuesto para Nginx host
     volumes:
       - .:/var/www/html
       - storage_dev:/var/www/html/storage
@@ -11,12 +15,16 @@ services:
     depends_on:
       - postgres
       - svfe-api-firmador
+    networks:
+      - partsfrio-net
 
   app-prod:
     build:
       context: .
       dockerfile: docker/php/Dockerfile
     container_name: partsfrio-prod
+    ports:
+      - '9000:9000' # expuesto para Nginx host
     volumes:
       - .:/var/www/html
       - storage_prod:/var/www/html/storage
@@ -24,6 +32,8 @@ services:
     depends_on:
       - postgres
       - svfe-api-firmador
+    networks:
+      - partsfrio-net
 
   svfe-api-firmador:
     image: svfe/svfe-api-firmador:v20230109
@@ -32,6 +42,8 @@ services:
       - '8113:8113'
     volumes:
       - firmador_temp:/uploads
+    networks:
+      - partsfrio-net
 
   postgres:
     image: postgres:15
@@ -43,21 +55,9 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
     ports:
-      - "5432:5432"
-
-  nginx:
-    image: nginx:stable
-    container_name: partsfrio-nginx
-    ports:
-      - '80:80'
-      - '443:443'
-    volumes:
-      - .:/var/www/html
-      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
-      - nginx_certs:/etc/nginx/certs
-    depends_on:
-      - app-prod
-      - app-dev
+      - '5432:5432'
+    networks:
+      - partsfrio-net
 
 volumes:
   pgdata:
@@ -66,4 +66,7 @@ volumes:
   storage_prod:
   env_dev:
   env_prod:
-  nginx_certs:
+
+networks:
+  partsfrio-net:
+    external: true
