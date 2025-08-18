@@ -11,8 +11,17 @@ services:
       - storage_dev:/var/www/html/storage
       - ./.env_dev:/var/www/html/.env
     depends_on:
-      - postgres
-      - svfe-api-firmador
+      postgres:
+        condition: service_healthy
+      svfe-api-firmador:
+        condition: service_started
+    environment:
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: nexus_test
+      DB_USERNAME: dev08_db
+      DB_PASSWORD: dev08Admin
     networks:
       - partsfrio-net
 
@@ -28,8 +37,17 @@ services:
       - storage_prod:/var/www/html/storage
       - ./.env_prod:/var/www/html/.env
     depends_on:
-      - postgres
-      - svfe-api-firmador
+      postgres:
+        condition: service_healthy
+      svfe-api-firmador:
+        condition: service_started
+    environment:
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: nexus_db
+      DB_USERNAME: dev08_db
+      DB_PASSWORD: dev08Admin
     networks:
       - partsfrio-net
 
@@ -54,6 +72,11 @@ services:
       - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
     ports:
       - '5432:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-dev08_db} -d postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 5
     networks:
       - partsfrio-net
 
