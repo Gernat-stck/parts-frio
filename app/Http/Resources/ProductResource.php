@@ -2,11 +2,13 @@
 
 namespace App\Http\Resources;
 
+use App\Services\ImageStorageService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class ProductResource extends JsonResource
 {
+
     /**
      * Transform the resource into an array.
      */
@@ -30,7 +32,9 @@ class ProductResource extends JsonResource
             'montoDescu' => number_format((float) $this->montoDescu, 2, '.', ''),
             'cantidad' => number_format((float) $this->cantidad, 2, '.', ''),
             'precioUni' => number_format((float) $this->precioUni, 2, '.', ''),
-            'img_product' => $this->img_product,
+            'img_product' => $this->img_product
+                ? app(ImageStorageService::class)->getImageUrl($this->img_product)
+                : '',
             'min_stock' => (int) $this->min_stock,
             'max_stock' => (int) $this->max_stock,
             'uniMedida' => (int) $this->uniMedida,

@@ -98,7 +98,7 @@ class AdminController extends Controller
         try {
             $products = $this->inventoryService->getAllProducts();
             return Inertia::render('admin/inventory/inventory', [
-                'products' => ProductResource::collection($products), // Usar ProductResource si existe
+                'products' => ProductResource::collection($products),
             ]);
         } catch (Throwable $e) {
             Log::error("Error al cargar la página de gestión de inventario: " . $e->getMessage());
@@ -372,7 +372,7 @@ class AdminController extends Controller
     public function createSale(): \Inertia\Response
     {
         try {
-            $availableProducts = $this->inventoryService->getAllProducts(); // Usar el servicio
+            $availableProducts = $this->inventoryService->getAllProducts();
             return Inertia::render('admin/sales/sale-point/sales', [
                 'availableProducts' => ProductResource::collection($availableProducts)
             ]);
@@ -398,8 +398,7 @@ class AdminController extends Controller
             // Obtén los datos del payload de 'invoiceData'
             $payload = $request->input('invoiceData');
             $isAnulacion = $tipoDte === 'anulacion';
-            $schemaUrl = $this->invoiceService->getSchemaUrl($tipoDte);
-            $schemaPath = storage_path($schemaUrl);
+            $schemaPath = $this->invoiceService->getSchemaFullPath($tipoDte);
 
             if (!file_exists($schemaPath)) {
                 Log::error("Esquema no encontrado para tipoDte: {$tipoDte} en {$schemaPath}");
@@ -407,6 +406,11 @@ class AdminController extends Controller
             }
 
             $schema = json_decode(file_get_contents($schemaPath));
+            if (!isset($schema->{'$schema'}) && !isset($schema->type)) {
+                Log::error("Esquema JSON inválido o incompleto para tipoDte {$tipoDte}");
+                return response()->json(['error' => 'Esquema JSON inválido o incompleto.'], 500);
+            }
+
             if (json_last_error() !== JSON_ERROR_NONE) {
                 Log::error("Error al decodificar esquema JSON para tipoDte {$tipoDte}: " . json_last_error_msg());
                 return response()->json(['error' => 'Error de configuración: Esquema DTE inválido.'], 500);

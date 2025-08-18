@@ -41,7 +41,7 @@ class ImageStorageService
             }
             Log::info("Imagen de producto almacenada: {$path}");
             // ¡Devuelve solo la ruta relativa!
-            return 'storage/' . $path;
+            return  $this->getImageUrl($path);
         } catch (Throwable $e) {
             Log::error("Error al almacenar la imagen del producto: " . $e->getMessage());
             throw new \Exception("Error al almacenar la imagen: " . $e->getMessage());
