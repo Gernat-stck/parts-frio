@@ -5,20 +5,20 @@ RUN apt-get update && apt-get install -y \
     libpq-dev zip unzip git curl nodejs npm \
     && docker-php-ext-install pdo_pgsql bcmath
 
+#Limpiar el Cache
+RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+
 # Instalar Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
-# Copiar solo archivos de dependencias primero para aprovechar el cache
-COPY composer.json composer.lock package.json package-lock.json ./
+           # Copiar solo archivos de dependencias primero para aprovechar el cache
+COPY . .
 
 # Instalar dependencias PHP y JS
 RUN composer install --no-dev --optimize-autoloader
 RUN npm install && npm run build
-
-# Copiar el resto del proyecto
-COPY . .
 
 # Asegurar permisos correctos
 RUN chown -R www-data:www-data storage bootstrap/cache
