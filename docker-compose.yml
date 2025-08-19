@@ -1,5 +1,4 @@
 services:
-
   postgres:
     image: postgres:15
     container_name: nexus-postgres
@@ -17,7 +16,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - partsfrio-net
+      - nexus-net
 
   svfe-api-firmador:
     image: svfe/svfe-api-firmador:v20230109
@@ -27,7 +26,7 @@ services:
     volumes:
       - firmador_temp:/uploads
     networks:
-      - partsfrio-net
+      - nexus-net
 
   app:
     build:
@@ -35,34 +34,37 @@ services:
       dockerfile: docker/php/Dockerfile
     container_name: nexus-app
     restart: unless-stopped
+    working_dir: /var/www/html
     env_file:
       - .env
     volumes:
-      - storage_prod:/var/www/html/storage
+      - storage:/var/www/html/storage
+      - public-data:/var/www/html/public
     depends_on:
       postgres:
         condition: service_healthy
       svfe-api-firmador:
         condition: service_started
     networks:
-      - partsfrio-net
+      - nexus-net
 
   nginx:
     image: nginx:alpine
-    container_name: partsfrio-nginx
+    container_name: nexus-testing-nginx
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
+      - '80:80'
+      - '443:443'
     volumes:
       - ./docker/nginx/dev.conf:/etc/nginx/conf.d/dev.conf:ro
       - ./docker/nginx/certbot.conf:/etc/nginx/conf.d/certbot.conf:ro
       - certbot-etc:/etc/letsencrypt
       - public-data:/var/www/html/public
     depends_on:
-      - app
+      app:
+        condition: service_healthy
     networks:
-      - partsfrio-net
+      - nexus-net
     read_only: true
 
   certbot:
@@ -72,23 +74,24 @@ services:
       - certbot-etc:/etc/letsencrypt
       - certbot-var:/var/lib/letsencrypt
       - public-data:/var/www/html/public
-    command: certonly --webroot --webroot-path=/var/www/html/public \
-      --email bitgensv@gmail.com --agree-tos --no-eff-email \
-      -d nexus.isolu.tech -d www.nexus.isolu.tech
+    command: >
+      certonly --webroot --webroot-path=/var/www/html/public
+      --email bitgensv@gmail.com --agree-tos --no-eff-email
+      -d test.nexus.isolu.tech
     depends_on:
-      - nginx
+      nginx:
+        condition: service_started
     networks:
-      - partsfrio-net
+      - nexus-net
     restart: on-failure
 
 volumes:
   pgdata:
   firmador_temp:
-  storage_prod:
+  storage:
   certbot-etc:
   certbot-var:
   public-data:
 
 networks:
-  partsfrio-net:
-    external: true
+  nexus-net:

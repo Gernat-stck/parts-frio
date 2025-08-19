@@ -1,43 +1,60 @@
-# =============================
-# 1️⃣ Etapa de build (Composer + NPM)
-# =============================
-FROM php:8.2-fpm AS build
+# Etapa 1: Build de dependencias y assets
+FROM php:8.2-fpm AS builder
 
+# Instalar dependencias del sistema necesarias para PHP y extensiones
 RUN apt-get update && apt-get install -y \
-    libpq-dev zip unzip git curl nodejs npm \
- && docker-php-ext-install pdo_pgsql bcmath
+    git unzip libzip-dev libpng-dev libonig-dev libxml2-dev \
+    && docker-php-ext-install pdo pdo_mysql mbstring zip exif pcntl bcmath gd \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+# Instalar Composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
+
+# Copiar composer.* y instalar dependencias PHP sin dev
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --optimize-autoloader --no-interaction
+
+# Copiar resto del código de la aplicación
 COPY . .
 
-# Instalar dependencias PHP (sin dev) y optimizar
-RUN COMPOSER_MEMORY_LIMIT=-1 composer install --no-dev --prefer-dist --optimize-autoloader
+# Construir assets con Node (si usas Vite)
+FROM node:20 AS frontend
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
 
-# Construir assets
-RUN npm ci && npm run build
+# Copiar build de frontend a la app PHP
+FROM builder AS combined
+COPY --from=frontend /app/public/build ./public/build
+COPY --from=frontend /app/public/manifest.json ./public/manifest.json
 
-# =============================
-# 2️⃣ Etapa final (producción)
-# =============================
-FROM php:8.2-fpm
+# Optimizaciones de Laravel
+RUN php artisan config:cache \
+ && php artisan route:cache \
+ && php artisan view:cache
 
+
+# Etapa 2: Imagen final de producción
+FROM php:8.2-fpm AS production
+
+# Extensiones necesarias (mismas que en build)
 RUN apt-get update && apt-get install -y \
-    libpq-dev zip unzip git curl \
- && docker-php-ext-install pdo_pgsql bcmath \
- && rm -rf /var/lib/apt/lists/*
+    libzip-dev libpng-dev libonig-dev libxml2-dev \
+    && docker-php-ext-install pdo pdo_mysql mbstring zip exif pcntl bcmath gd \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /var/www/html
 
-COPY --from=build /var/www/html /var/www/html
+# Copiar solo lo necesario desde la etapa de build
+COPY --from=combined /var/www/html /var/www/html
 
-# Permisos para Laravel
+# Ajustar permisos para Laravel
 RUN chown -R www-data:www-data storage bootstrap/cache \
  && chmod -R 775 storage bootstrap/cache
 
-COPY docker/php/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
-ENTRYPOINT ["/entrypoint.sh"]
+EXPOSE 9000
 CMD ["php-fpm"]
