@@ -1,39 +1,60 @@
-# Usa la imagen base de PHP para producción
-FROM php:8.2-fpm
+# Etapa 1: Build de dependencias y assets
+FROM php:8.2-fpm AS builder
 
-# Instalar dependencias del sistema necesarias para prod
+# Instalar dependencias del sistema necesarias para PHP y extensiones
 RUN apt-get update && apt-get install -y \
-    libpq-dev zip unzip git curl nodejs npm \
-    && rm -rf /var/lib/apt/lists/* \
-    && docker-php-ext-install pdo_pgsql bcmath
+    git unzip libzip-dev libpng-dev libonig-dev libxml2-dev \
+    && docker-php-ext-install pdo pdo_mysql mbstring zip exif pcntl bcmath gd \
+    && rm -rf /var/lib/apt/lists/*
 
 # Instalar Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Copiar el código del proyecto
 WORKDIR /var/www/html
+
+# Copiar composer.* y instalar dependencias PHP sin dev
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --optimize-autoloader --no-interaction
+
+# Copiar resto del código de la aplicación
 COPY . .
 
-# Instalar dependencias de PHP solo para prod
-RUN composer install --no-dev --optimize-autoloader
+# Construir assets con Node (si usas Vite)
+FROM node:20 AS frontend
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
 
-# Instalar dependencias de JS y compilar activos
-RUN npm install && npm run build
+# Copiar build de frontend a la app PHP
+FROM builder AS combined
+COPY --from=frontend /app/public/build ./public/build
+COPY --from=frontend /app/public/manifest.json ./public/manifest.json
 
-# Asegurar permisos correctos para la carpeta de almacenamiento
-# Esto previene errores de "Permission denied"
-RUN chown -R www-data:www-data storage bootstrap/cache
-RUN chmod -R 775 storage bootstrap/cache
-
-# Ejecutar los comandos de caché de Laravel para optimizar el rendimiento
+# Optimizaciones de Laravel
 RUN php artisan config:cache \
-    && php artisan route:cache \
-    && php artisan view:cache \
-    && php artisan storage:link
+ && php artisan route:cache \
+ && php artisan view:cache
 
-# Copiar el entrypoint y hacerlo ejecutable
-COPY docker/php/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
 
-ENTRYPOINT ["/entrypoint.sh"]
+# Etapa 2: Imagen final de producción
+FROM php:8.2-fpm AS production
+
+# Extensiones necesarias (mismas que en build)
+RUN apt-get update && apt-get install -y \
+    libzip-dev libpng-dev libonig-dev libxml2-dev \
+    && docker-php-ext-install pdo pdo_mysql mbstring zip exif pcntl bcmath gd \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /var/www/html
+
+# Copiar solo lo necesario desde la etapa de build
+COPY --from=combined /var/www/html /var/www/html
+
+# Ajustar permisos para Laravel
+RUN chown -R www-data:www-data storage bootstrap/cache \
+ && chmod -R 775 storage bootstrap/cache
+
+EXPOSE 9000
 CMD ["php-fpm"]
