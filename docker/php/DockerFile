@@ -1,4 +1,6 @@
-# Etapa 1: Build de dependencias y assets
+# ==========================
+# Etapa 1: Build de dependencias PHP
+# ==========================
 FROM php:8.2-fpm AS builder
 
 # Instalar dependencias del sistema necesarias para PHP y extensiones
@@ -12,36 +14,48 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
-# Copiar composer.* y instalar dependencias PHP sin dev
+# Copiar composer.* e instalar dependencias PHP sin dev
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
-# Copiar resto del código de la aplicación
+# Copiar el resto de la aplicación
 COPY . .
 
-# Construir assets con Node (si usas Vite)
+# ==========================
+# Etapa 2: Build de frontend con Vite
+# ==========================
 FROM node:20 AS frontend
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
+
+# Aquí tu vite.config.js ya debe tener:
+# build: { manifest: true, outDir: 'public/build', ... }
 RUN npm run build
 
-# Copiar build de frontend a la app PHP
+# Validación opcional: listar build para confirmar manifest
+RUN ls -l public/build
+
+# ==========================
+# Etapa 3: Combinar PHP + assets
+# ==========================
 FROM builder AS combined
+
+# Copiar solo la carpeta public/build completa (incluye manifest.json)
 COPY --from=frontend /app/public/build ./public/build
-COPY --from=frontend /app/public/manifest.json ./public/manifest.json
 
 # Optimizaciones de Laravel
 RUN php artisan config:cache \
  && php artisan route:cache \
  && php artisan view:cache
 
-
-# Etapa 2: Imagen final de producción
+# ==========================
+# Etapa 4: Imagen final de producción
+# ==========================
 FROM php:8.2-fpm AS production
 
-# Extensiones necesarias (mismas que en build)
+# Extensiones necesarias (iguales que en builder)
 RUN apt-get update && apt-get install -y \
     libzip-dev libpng-dev libonig-dev libxml2-dev \
     && docker-php-ext-install pdo pdo_mysql mbstring zip exif pcntl bcmath gd \
@@ -49,7 +63,7 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /var/www/html
 
-# Copiar solo lo necesario desde la etapa de build
+# Copiar todo el código y vendor desde combined
 COPY --from=combined /var/www/html /var/www/html
 
 # Ajustar permisos para Laravel
