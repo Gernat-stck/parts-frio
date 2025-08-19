@@ -1,18 +1,27 @@
-# ==========================
 # Etapa 1: Build de dependencias PHP
 # ==========================
 FROM php:8.2-fpm AS builder
 
 # Instalar dependencias del sistema necesarias para PHP y extensiones
 RUN apt-get update && apt-get install -y \
-    git unzip libzip-dev libpng-dev libonig-dev libxml2-dev \
-    && docker-php-ext-install pdo pdo_mysql mbstring zip exif pcntl bcmath gd \
-    && rm -rf /var/lib/apt/lists/*
+    git \
+    curl \
+    libpng-dev \
+    libonig-dev \
+    libxml2-dev \
+    zip \
+    unzip
+# Clear cache
+RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install PHP extensions
+RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
 
 # Instalar Composer
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
+
 
 # Copiar composer.* e instalar dependencias PHP sin dev
 COPY composer.json composer.lock ./
