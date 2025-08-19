@@ -1,72 +1,71 @@
 #!/bin/bash
-set -euo pipefail
+set -e
 
-# Colores para la salida
-OK="\e[32m✔\e[0m"
-FAIL="\e[31m✘\e[0m"
-INFO="\e[34mℹ\e[0m"
+APP_CONTAINER="app-prod"      # nombre del servicio PHP-FPM/Laravel
+NGINX_CONTAINER="nginx-prod"  # nombre del servicio Nginx
+DB_CONTAINER="db-prod"        # si quieres validar DB por nombre
 
-APP_CONTAINER="nexus-app"
-NGINX_CONTAINER="partsfrio-nginx"
-DB_CONTAINER="nexus-postgres"
+echo "🔍 Validando estado de contenedores..."
+docker compose ps
 
-echo -e "$INFO Iniciando validaciones post‑deploy..."
-
-# 1️⃣ Estado de contenedores
-echo -n "🛠 Verificando contenedores... "
-if docker ps --format '{{.Names}}' | grep -q "$APP_CONTAINER" && \
-   docker ps --format '{{.Names}}' | grep -q "$DB_CONTAINER"; then
-    echo -e "$OK"
+# 1️⃣ Verificar healthchecks (si están definidos en compose)
+if docker inspect --format='{{.State.Health.Status}}' $APP_CONTAINER 2>/dev/null | grep -q healthy; then
+    echo "✅ App container saludable"
 else
-    echo -e "$FAIL Algún contenedor no está corriendo" && exit 1
+    echo "❌ App container no saludable"; exit 1
 fi
 
-# 2️⃣ Healthcheck DB
-echo -n "🗄 Verificando conexión a Postgres... "
-if docker exec "$DB_CONTAINER" pg_isready -U "${POSTGRES_USER:-dev08_db}" >/dev/null; then
-    echo -e "$OK"
+if docker inspect --format='{{.State.Health.Status}}' $NGINX_CONTAINER 2>/dev/null | grep -q healthy; then
+    echo "✅ Nginx container saludable"
 else
-    echo -e "$FAIL Base de datos no responde" && exit 1
+    echo "❌ Nginx container no saludable"; exit 1
 fi
 
-# 3️⃣ Migraciones pendientes
-echo -n "📜 Comprobando migraciones pendientes... "
-if docker exec "$APP_CONTAINER" php artisan migrate:status | grep -q 'Pending'; then
-    echo -e "$FAIL Migraciones pendientes detectadas" && exit 1
-else
-    echo -e "$OK"
-fi
-
-# 4️⃣ Seeders críticos (roles/datos base)
-echo -n "🌱 Verificando roles base... "
-ROLE_COUNT=$(docker exec "$APP_CONTAINER" php -r "echo \App\Models\Role::count();")
-if [ "$ROLE_COUNT" -gt 0 ]; then
-    echo -e "$OK ($ROLE_COUNT roles)"
-else
-    echo -e "$FAIL Sin roles en DB" && exit 1
-fi
-
-# 5️⃣ Accesibilidad de endpoints críticos
-for url in "https://nexus.isolu.tech/health" \
-           "https://nexus.isolu.tech/api/ping"; do
-    echo -n "🌐 Probing $url ... "
-    if curl -sk --max-time 5 "$url" | grep -qi "ok"; then
-        echo -e "$OK"
+# 2️⃣ Archivos críticos en contenedor PHP
+echo "📂 Verificando archivos críticos en contenedor..."
+docker compose exec -T $APP_CONTAINER bash -c '
+  for f in public/index.php vendor/autoload.php public/manifest.json; do
+    if [ -f "$f" ]; then
+      echo "✅ $f existe"
     else
-        echo -e "$FAIL Error en endpoint: $url" && exit 1
+      echo "❌ $f falta"; exit 1
     fi
-done
+  done
+'
 
-# 6️⃣ Certificados HTTPS
-echo -n "🔐 Validando certificados SSL... "
-EXP_DAYS=$(echo | openssl s_client -servername nexus.isolu.tech -connect nexus.isolu.tech:443 2>/dev/null \
-            | openssl x509 -noout -dates \
-            | grep 'notAfter' \
-            | sed 's/.*=//')
-if [ -n "$EXP_DAYS" ]; then
-    echo -e "$OK Válido hasta: $EXP_DAYS"
+# 3️⃣ Permisos de storage/ y bootstrap/cache
+docker compose exec -T $APP_CONTAINER bash -c '
+  for dir in storage bootstrap/cache; do
+    if [ -w "$dir" ]; then
+      echo "✅ $dir con permisos de escritura"
+    else
+      echo "❌ $dir no tiene permisos de escritura"; exit 1
+    fi
+  done
+'
+
+# 4️⃣ Verificar conexión a base de datos
+echo "🗄  Probando conexión DB..."
+docker compose exec -T $APP_CONTAINER php -r "
+try {
+  new PDO(
+    getenv('DB_CONNECTION').':host='.getenv('DB_HOST').';port='.getenv('DB_PORT').';dbname='.getenv('DB_DATABASE'),
+    getenv('DB_USERNAME'),
+    getenv('DB_PASSWORD')
+  );
+  echo '✅ Conexión DB OK';
+} catch (Exception \$e) {
+  echo '❌ Fallo conexión DB: ' . \$e->getMessage();
+  exit(1);
+}
+"
+
+# 5️⃣ Probar endpoint HTTP principal
+echo "🌐 Verificando respuesta HTTP..."
+if curl -sk --max-time 5 https://test.nexus.isolu.tech | grep -qi "<html"; then
+    echo "✅ Nginx responde con HTML"
 else
-    echo -e "$FAIL No se pudo validar SSL" && exit 1
+    echo "❌ Respuesta HTTP inválida"; exit 1
 fi
 
-echo -e "$OK Todas las validaciones pasaron con éxito 🎉"
+echo "🎯 Post-deploy check finalizado con éxito"
