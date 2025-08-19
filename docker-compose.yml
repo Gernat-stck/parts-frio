@@ -1,72 +1,5 @@
 services:
 
-  nginx:
-    image: nginx:alpine
-    container_name: partsfrio-nginx
-    restart: unless-stopped
-    ports:
-      - "80:80"   # Puerto HTTP público
-      - "443:443" # Puerto HTTPS público
-    volumes:
-      - .:/var/www/html
-      - ./docker/nginx/prod.conf:/etc/nginx/conf.d/prod.conf
-      - /etc/letsencrypt:/etc/letsencrypt
-    depends_on:
-      - app-prod
-    networks:
-      - partsfrio-net
-
-  app-prod:
-    build:
-      context: .
-      dockerfile: docker/php/Dockerfile
-    container_name: partsfrio-prod
-#    ports:
-#     - '9000:9000' # expuesto para Nginx host
-    volumes:
-      - .:/var/www/html
-      - storage_prod:/var/www/html/storage
-      - ./.env:/var/www/html/.env
-    depends_on:
-      postgres:
-        condition: service_healthy
-      svfe-api-firmador:
-        condition: service_started
-    environment:
-      DB_CONNECTION: pgsql
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_DATABASE: nexus_db
-      DB_USERNAME: dev08_db
-      DB_PASSWORD: dev08Admin
-    networks:
-      - partsfrio-net
-
-  certbot:
-     image: certbot/certbot
-     container_name: certbot
-     volumes:
-        - .:/var/www/html
-        - certbot-etc:/etc/letsencrypt
-        - certbot-var:/var/lib/letsencrypt
-        - ./docker/nginx/certbot.conf:/etc.nginx/certbot.conf
-     command: certonly --webroot --webroot-path=/var/www/html --email bitgensv@gmail.com --agree-tos --no-eff-email -d nexus.isolu.tech -d www.nexus.isolu.tech
-     depends_on:
-       - nginx
-     networks:
-       - partsfrio-net
-     restart: always
-
-  svfe-api-firmador:
-    image: svfe/svfe-api-firmador:v20230109
-    container_name: svfe-api-firmador
-    ports:
-      - '8113:8113'
-    volumes:
-      - firmador_temp:/uploads
-    networks:
-      - partsfrio-net
-
   postgres:
     image: postgres:15
     container_name: nexus-postgres
@@ -86,13 +19,75 @@ services:
     networks:
       - partsfrio-net
 
+  svfe-api-firmador:
+    image: svfe/svfe-api-firmador:v20230109
+    container_name: svfe-api-firmador
+    ports:
+      - '8113:8113'
+    volumes:
+      - firmador_temp:/uploads
+    networks:
+      - partsfrio-net
+
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: nexus-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - storage_prod:/var/www/html/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      svfe-api-firmador:
+        condition: service_started
+    networks:
+      - partsfrio-net
+
+  nginx:
+    image: nginx:alpine
+    container_name: partsfrio-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/dev.conf:/etc/nginx/conf.d/dev.conf:ro
+      - ./docker/nginx/certbot.conf:/etc/nginx/conf.d/certbot.conf:ro
+      - certbot-etc:/etc/letsencrypt
+      - public-data:/var/www/html/public
+    depends_on:
+      - app
+    networks:
+      - partsfrio-net
+    read_only: true
+
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    volumes:
+      - certbot-etc:/etc/letsencrypt
+      - certbot-var:/var/lib/letsencrypt
+      - public-data:/var/www/html/public
+    command: certonly --webroot --webroot-path=/var/www/html/public \
+      --email bitgensv@gmail.com --agree-tos --no-eff-email \
+      -d nexus.isolu.tech -d www.nexus.isolu.tech
+    depends_on:
+      - nginx
+    networks:
+      - partsfrio-net
+    restart: on-failure
+
 volumes:
   pgdata:
   firmador_temp:
-  storage_dev:
   storage_prod:
   certbot-etc:
   certbot-var:
+  public-data:
 
 networks:
   partsfrio-net:

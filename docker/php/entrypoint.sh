@@ -1,15 +1,21 @@
 #!/bin/bash
+set -e
 
-echo "🔧 Ejecutando comandos Artisan..."
+echo "⏳ Esperando a que la base de datos esté disponible..."
+until php -r "try { new PDO('pgsql:host=' . getenv('DB_HOST') . ';port=' . getenv('DB_PORT') . ';dbname=' . getenv('DB_DATABASE'), getenv('DB_USERNAME'), getenv('DB_PASSWORD')); echo 'DB OK'; } catch (Exception \$e) { exit(1); }"; do
+    sleep 2
+done
+
+echo "🔧 Ejecutando migraciones..."
 php artisan migrate --force
 
-# Ejecutar seeder solo si no hay usuarios
-USER_COUNT=$(php artisan tinker --execute="echo \App\Models\User::count();")
+USER_COUNT=$(php -r "echo \App\Models\User::count();")
 
 if [ "$USER_COUNT" -eq "0" ]; then
-  echo "🌱 Ejecutando seeder inicial..."
-  php artisan db:seed
+    echo "🌱 Ejecutando seeder inicial..."
+    php artisan db:seed --force
 else
-  echo "✅ Seeder ya ejecutado anteriormente"
+    echo "✅ Seeder ya ejecutado anteriormente"
 fi
+
 exec "$@"
