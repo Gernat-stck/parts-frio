@@ -34,7 +34,7 @@ class ImageStorageService
 
         try {
             $filename = Str::uuid() . '.' . $image->getClientOriginalExtension();
-            $path = $image->storeAs('products', $filename, $this->disk);
+            $$path = $image->storePubliclyAs('products', $filename, $this->disk);
 
             if (!$path) {
                 throw new \Exception("No se pudo almacenar la imagen en el disco '{$this->disk}'.");

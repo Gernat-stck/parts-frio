@@ -1,11 +1,30 @@
 services:
+
+  nginx:
+    image: nginx:alpine
+    container_name: partsfrio-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"   # Puerto HTTP público
+      - "443:443" # Puerto HTTPS público
+    volumes:
+      - .:/var/www/html
+      - ./docker/nginx/prod.conf:/etc/nginx/conf.d/prod.conf
+      - ./docker/nginx/dev.conf:/etc/nginx/conf.d/dev.conf
+      - /etc/letsencrypt:/etc/letsencrypt
+    depends_on:
+      - app-prod
+      - app-dev
+    networks:
+      - partsfrio-net
+
   app-dev:
     build:
       context: .
       dockerfile: docker/php/Dockerfile
     container_name: partsfrio-dev
-    ports:
-      - '9001:9000' # expuesto para Nginx host
+#    ports:
+#     - '9001:9000' # expuesto para Nginx host
     volumes:
       - .:/var/www/html
       - storage_dev:/var/www/html/storage
@@ -30,8 +49,8 @@ services:
       context: .
       dockerfile: docker/php/Dockerfile
     container_name: partsfrio-prod
-    ports:
-      - '9000:9000' # expuesto para Nginx host
+#    ports:
+#     - '9000:9000' # expuesto para Nginx host
     volumes:
       - .:/var/www/html
       - storage_prod:/var/www/html/storage
@@ -50,6 +69,21 @@ services:
       DB_PASSWORD: dev08Admin
     networks:
       - partsfrio-net
+
+  certbot:
+     image: certbot/certbot
+     container_name: certbot
+     volumes:
+        - .:/var/www/html
+        - certbot-etc:/etc/letsencrypt
+        - certbot-var:/var/lib/letsencrypt
+        - ./docker/nginx/certbot.conf:/etc.nginx/certbot.conf
+     command: certonly --webroot --webroot-path=/var/www/html --email bitgensv@gmail.com --agree-tos --no-eff-email -d testing.isolu.tech -d nexus.isolu.tech -d www.nexus.isolu.tech
+     depends_on:
+       - nginx
+     networks:
+       - partsfrio-net
+     restart: always
 
   svfe-api-firmador:
     image: svfe/svfe-api-firmador:v20230109
@@ -85,6 +119,8 @@ volumes:
   firmador_temp:
   storage_dev:
   storage_prod:
+  certbot-etc:
+  certbot-var:
 
 networks:
   partsfrio-net:
