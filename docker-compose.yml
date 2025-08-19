@@ -10,37 +10,9 @@ services:
     volumes:
       - .:/var/www/html
       - ./docker/nginx/prod.conf:/etc/nginx/conf.d/prod.conf
-      - ./docker/nginx/dev.conf:/etc/nginx/conf.d/dev.conf
       - /etc/letsencrypt:/etc/letsencrypt
     depends_on:
       - app-prod
-      - app-dev
-    networks:
-      - partsfrio-net
-
-  app-dev:
-    build:
-      context: .
-      dockerfile: docker/php/Dockerfile
-    container_name: partsfrio-dev
-#    ports:
-#     - '9001:9000' # expuesto para Nginx host
-    volumes:
-      - .:/var/www/html
-      - storage_dev:/var/www/html/storage
-      - ./.env_dev:/var/www/html/.env
-    depends_on:
-      postgres:
-        condition: service_healthy
-      svfe-api-firmador:
-        condition: service_started
-    environment:
-      DB_CONNECTION: pgsql
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_DATABASE: nexus_test
-      DB_USERNAME: dev08_db
-      DB_PASSWORD: dev08Admin
     networks:
       - partsfrio-net
 
@@ -54,7 +26,7 @@ services:
     volumes:
       - .:/var/www/html
       - storage_prod:/var/www/html/storage
-      - ./.env_prod:/var/www/html/.env
+      - ./.env:/var/www/html/.env
     depends_on:
       postgres:
         condition: service_healthy
@@ -78,7 +50,7 @@ services:
         - certbot-etc:/etc/letsencrypt
         - certbot-var:/var/lib/letsencrypt
         - ./docker/nginx/certbot.conf:/etc.nginx/certbot.conf
-     command: certonly --webroot --webroot-path=/var/www/html --email bitgensv@gmail.com --agree-tos --no-eff-email -d testing.isolu.tech -d nexus.isolu.tech -d www.nexus.isolu.tech
+     command: certonly --webroot --webroot-path=/var/www/html --email bitgensv@gmail.com --agree-tos --no-eff-email -d nexus.isolu.tech -d www.nexus.isolu.tech
      depends_on:
        - nginx
      networks:

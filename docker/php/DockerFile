@@ -1,34 +1,34 @@
+# Usa la imagen base de PHP para producción
 FROM php:8.2-fpm
 
-# Instalar dependencias del sistema
+# Instalar dependencias del sistema necesarias para prod
 RUN apt-get update && apt-get install -y \
     libpq-dev zip unzip git curl nodejs npm \
+    && rm -rf /var/lib/apt/lists/* \
     && docker-php-ext-install pdo_pgsql bcmath
 
-#Limpiar el Cache
-RUN apt-get clean && rm -rf /var/lib/apt/lists/*
-
-# Instalar Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-
+# Copiar el código del proyecto
 WORKDIR /var/www/html
-
-           # Copiar solo archivos de dependencias primero para aprovechar el cache
 COPY . .
 
-# Instalar dependencias PHP y JS
+# Instalar dependencias de PHP solo para prod
 RUN composer install --no-dev --optimize-autoloader
+
+# Instalar dependencias de JS y compilar activos
 RUN npm install && npm run build
 
-# Asegurar permisos correctos
+# Asegurar permisos correctos para la carpeta de almacenamiento
+# Esto previene errores de "Permission denied"
 RUN chown -R www-data:www-data storage bootstrap/cache
+RUN chmod -R 775 storage bootstrap/cache
 
-# Ejecutar comandos Artisan
+# Ejecutar los comandos de caché de Laravel para optimizar el rendimiento
 RUN php artisan config:cache \
- && php artisan route:cache \
- && php artisan view:cache \
- && php artisan storage:link
+    && php artisan route:cache \
+    && php artisan view:cache \
+    && php artisan storage:link
 
+# Copiar el entrypoint y hacerlo ejecutable
 COPY docker/php/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
