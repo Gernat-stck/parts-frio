@@ -24,8 +24,9 @@ export default defineConfig({
         },
     },
     build: {
-        chunkSizeWarningLimit: 2000,
-        sourcemap: false,
+        chunkSizeWarningLimit: 2,
+        manifest: true,
+        outDir: 'public/build',
         rollupOptions: {
             output: {
                 manualChunks: {
