@@ -63,7 +63,7 @@ services:
       - '443:443'
     volumes:
       # Use this for initial certificate acquisition.
-      # - ./docker/nginx/certbot.conf:/etc/nginx/conf.d/default.conf:ro
+      # - ./docker/nginx/certonly.conf:/etc/nginx/conf.d/default.conf:ro
 
       # Use this for production after certificates are acquired.
       - ./docker/nginx/dev.conf:/etc/nginx/conf.d/dev.conf:ro
