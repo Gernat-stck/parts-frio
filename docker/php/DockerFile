@@ -2,33 +2,37 @@
 # ==========================
 FROM php:8.2-fpm AS builder
 
-# Instalar dependencias del sistema necesarias para PHP y extensiones
+# Instalar dependencias del sistema para PHP y extensiones (usando apt-get)
 RUN apt-get update && apt-get install -y \
     git \
     curl \
+    libpq-dev \
     libpng-dev \
     libonig-dev \
     libxml2-dev \
     zip \
-    unzip
-RUN apk update && apk add --no-cache \
-    postgresql-dev \
-# Clear cache
-RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+    unzip \
+    libzip-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
+    libicu-dev \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN docker-php-ext-install pdo pdo_pgsql
-
-# Install PHP extensions
-RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
+# Instalar y habilitar las extensiones de PHP, incluyendo pdo_pgsql
+RUN docker-php-ext-install pdo pdo_pgsql mbstring exif pcntl bcmath gd intl \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j$(nproc) gd
 
 # Instalar Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
-# Copiar el resto de la aplicación
+# Copiar archivos de la aplicación
 COPY . .
 
+# Instalar dependencias de Composer
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 # ==========================
@@ -40,48 +44,46 @@ COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
 
+# Generar los archivos de producción
 # Aquí tu vite.config.js ya debe tener:
 # build: { manifest: true, outDir: 'public/build', ... }
 RUN npm run build
 
-# Validación opcional: listar build para confirmar manifest
-RUN ls -l public/build
-
 # ==========================
-# Etapa 3: Combinar PHP + assets
-# ==========================
-FROM builder AS combined
-
-# Copiar solo la carpeta public/build completa (incluye manifest.json)
-COPY --from=frontend /app/public/build ./public/build
-
-# Optimizaciones de Laravel
-RUN php artisan config:cache \
- && php artisan route:cache \
- && php artisan view:cache
-
-# ==========================
-# Etapa 4: Imagen final de producción
+# Etapa 3: Imagen final de producción
 # ==========================
 FROM php:8.2-fpm AS production
 
-# Extensiones necesarias (iguales que en builder)
+# Extensiones necesarias para la imagen final (usando apt-get)
 RUN apt-get update && apt-get install -y \
-    libzip-dev libpng-dev libonig-dev libxml2-dev \
-    && docker-php-ext-install pdo pdo_mysql mbstring zip exif pcntl bcmath gd \
+    libzip-dev \
+    libpng-dev \
+    libonig-dev \
+    libxml2-dev \
+    libpq-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
+    libicu-dev \
+    g++ \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install pdo pdo_pgsql mbstring exif pcntl bcmath gd intl zip \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /var/www/html
 
-# Copiar todo el código y vendor desde combined
-COPY --from=combined /var/www/html /var/www/html
+# Copiar el código y los archivos del frontend desde las etapas anteriores
+COPY --from=builder /var/www/html /var/www/html
+COPY --from=frontend /app/public/build ./public/build
+
+# Optimizaciones de Laravel
+RUN php artisan config:cache \
+    && php artisan route:cache \
+    && php artisan view:cache
 
 # Ajustar permisos para Laravel
 RUN chown -R www-data:www-data storage bootstrap/cache \
- && chmod -R 775 storage bootstrap/cache
+    && chmod -R 775 storage bootstrap/cache
 
 EXPOSE 9000
 
 CMD ["php-fpm"]
-
-
