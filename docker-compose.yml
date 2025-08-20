@@ -40,6 +40,7 @@ services:
     volumes:
       - storage:/var/www/html/storage
       - public-data:/var/www/html/public
+      - storage-data:/var/www/html/storage
     healthcheck:
       test: ['CMD-SHELL', 'php artisan route:list >/dev/null 2>&1']
       interval: 10s
@@ -84,6 +85,7 @@ volumes:
   certbot-var:
   certbot-web:
   public-data:
+  storage-data:
 
 networks:
   nexus-net:
