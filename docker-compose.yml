@@ -33,7 +33,7 @@ services:
       context: .
       dockerfile: docker/php/Dockerfile
     container_name: nexus-app
-    restart: "no"
+    restart: unless-stopped
     working_dir: /var/www/html
     env_file:
       - .env
@@ -57,7 +57,7 @@ services:
   nginx:
     image: nginx:alpine
     container_name: nexus-testing-nginx
-    restart: unless-stopped
+    restart: on-failure:3
     ports:
       - '80:80'
       - '443:443'
