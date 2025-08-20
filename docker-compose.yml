@@ -24,7 +24,7 @@ services:
     ports:
       - '8113:8113'
     volumes:
-      - firmador_temp:/uploads
+     - ${PWD}/docker/firmador/temp:/uploads:ro
     networks:
       - nexus-net
 
