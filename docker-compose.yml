@@ -11,7 +11,7 @@ services:
     ports:
       - '5432:5432'
     healthcheck:
-      test: ["CMD-SHELL", "psql -U ${POSTGRES_USER:-dev08_db} -d postgres -c 'SELECT 1;'"]
+      test: ['CMD-SHELL', "psql -U ${POSTGRES_USER:-dev08_db} -d postgres -c 'SELECT 1;'"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -41,7 +41,7 @@ services:
       - storage:/var/www/html/storage
       - public-data:/var/www/html/public
     healthcheck:
-      test: ["CMD-SHELL", "php artisan route:list >/dev/null 2>&1"]
+      test: ['CMD-SHELL', 'php artisan route:list >/dev/null 2>&1']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -63,15 +63,14 @@ services:
       - '443:443'
     volumes:
       - ./docker/nginx/dev.conf:/etc/nginx/conf.d/dev.conf:ro
-      - ./docker/nginx/certbot.conf:/etc/nginx/conf.d/certbot.conf:ro
       - certbot-etc:/etc/letsencrypt
       - public-data:/var/www/html/public
+      - certbot-web:/var/www/certbot
     depends_on:
       app:
         condition: service_healthy
     networks:
       - nexus-net
-    read_only: true
 
   certbot:
     image: certbot/certbot
@@ -79,11 +78,9 @@ services:
     volumes:
       - certbot-etc:/etc/letsencrypt
       - certbot-var:/var/lib/letsencrypt
-      - public-data:/var/www/html/public
+      - certbot-web:/var/www/certbot
     command: >
-      certonly --webroot --webroot-path=/var/www/html/public
-      --email bitgensv@gmail.com --agree-tos --no-eff-email
-      -d test.nexus.isolu.tech
+      certonly --webroot --webroot-path=/var/www/certbot --email bitgensv@gmail.com --agree-tos --no-eff-email -d test.nexus.isolu.tech
     depends_on:
       nginx:
         condition: service_started
@@ -97,6 +94,7 @@ volumes:
   storage:
   certbot-etc:
   certbot-var:
+  certbot-web:
   public-data:
 
 networks:
