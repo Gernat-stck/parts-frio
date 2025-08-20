@@ -180,7 +180,7 @@ class AdminController extends Controller
     public function updateInventoryItem(UpdateInventoryItemRequest $request, string $product_code): \Illuminate\Http\RedirectResponse
     {
         try {
-            $inventoryItem = $this->inventoryService->findProductById($product_code); // Usar el servicio para encontrar
+            $inventoryItem = $this->inventoryService->findProductById($product_code);
             if (!$inventoryItem) {
                 Log::warning('Producto no encontrado para actualización', [
                     'product_code' => $product_code,

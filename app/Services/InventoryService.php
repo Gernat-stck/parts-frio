@@ -139,6 +139,8 @@ class InventoryService
                     Log::error("Error al guardar la imagen del producto: " . $e->getMessage());
                     throw new \Exception("Error al procesar la imagen del producto.");
                 }
+            } else {
+                $data['img_product'] = '';
             }
 
             try {
@@ -323,5 +325,4 @@ class InventoryService
             'actualizados' => $resultados,
         ];
     }
-    
 }
