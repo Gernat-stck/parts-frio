@@ -23,12 +23,12 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www/html
 
 
-# Copiar composer.* e instalar dependencias PHP sin dev
-COPY composer.json composer.lock ./
-RUN composer install --no-dev --optimize-autoloader --no-interaction
-
 # Copiar el resto de la aplicación
 COPY . .
+
+RUN composer install --no-dev --optimize-autoloader --no-interaction
+
+
 
 # ==========================
 # Etapa 2: Build de frontend con Vite
