@@ -22,13 +22,10 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
-
 # Copiar el resto de la aplicación
 COPY . .
 
 RUN composer install --no-dev --optimize-autoloader --no-interaction
-
-
 
 # ==========================
 # Etapa 2: Build de frontend con Vite
@@ -80,4 +77,7 @@ RUN chown -R www-data:www-data storage bootstrap/cache \
  && chmod -R 775 storage bootstrap/cache
 
 EXPOSE 9000
+
 CMD ["php-fpm"]
+
+
