@@ -40,6 +40,12 @@ services:
     volumes:
       - storage:/var/www/html/storage
       - public-data:/var/www/html/public
+    healthcheck:
+    test: ["CMD-SHELL", "php artisan route:list >/dev/null 2>&1"]
+    interval: 10s
+    timeout: 5s
+    retries: 5
+    start_period: 30s
     depends_on:
       postgres:
         condition: service_healthy
